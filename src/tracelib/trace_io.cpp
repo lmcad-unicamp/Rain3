@@ -40,7 +40,6 @@ raw_input_pipe_t::~raw_input_pipe_t()
     read, return true otherwise. */
 bool raw_input_pipe_t::get_next_item(trace_item_t& item)
 {
-start:
   if (curr_idx > end_idx) 
     return false; // no more items to read
 

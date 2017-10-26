@@ -22,13 +22,16 @@
 #include <trace_io.h>
 
 #include <Simulator.hpp>
+#include <RFTs.hpp>
+#include <Policies.hpp>
 
-int main(int argc, char** argv) {
+int main() {
 
   // Create the input pipe.
-  trace_io::raw_input_pipe_t InstStream("/home/vanderson/dev/mestrado/rain3/input/out", 201, 203);
+  trace_io::raw_input_pipe_t InstStream("/home/vanderson/dev/mestrado/Rain3/input/out", 201, 201);
 
-  rain3::Simulator RainSim(InstStream);
+  rain3::Simulator RainSim;
 
-  return 0;
+  RainSim.run(InstStream, rain3::RFTs::handleNewInstructionWithNET, rain3::QueuePolicies::handleWaitQueueParallel);
+	return 0;
 }

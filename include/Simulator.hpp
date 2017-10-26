@@ -1,30 +1,40 @@
-/***************************************************************************
- *   Copyright (C) 2017 by:                                                *
- *   Vanderson M. Rosario (vandersonmr2@gmail.com)                         *
- *                                                                         *
- *   This program is free software; you can redistribute it and/or modify  *
- *   it under the terms of the GNU General Public License as published by  *
- *   the Free Software Foundation; either version 3 of the License, or     *
- *   (at your option) any later version.                                   *
- *                                                                         *
- *   This program is distributed in the hope that it will be useful,       *
- *   but WITHOUT ANY WARRANTY; without even the implied warranty of        *
- *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         *
- *   GNU General Public License for more details.                          *
- *                                                                         *
- *   You should have received a copy of the GNU General Public License     *
- *   along with this program; if not, write to the                         *
- *   Free Software Foundation, Inc.,                                       *
- *   59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
- ***************************************************************************/
-
+#include <Region.hpp>
+#include <SimulationStatistics.hpp>
+#include <sparsepp/spp.h>
 #include <trace_io.h>
 
+#include <memory>
+
 namespace rain3 {
+  typedef std::function<Maybe<Region>(trace_io::trace_item_t&, trace_io::trace_item_t&, InternStateTransition)> RFTHandler;
+  typedef std::function<std::vector<Region*>(vector<Region*>&)> WaitQueueHandler;
+
   class Simulator {
-    trace_io::raw_input_pipe_t& InstStream;
+      enum State { Interpreting, NativeExecuting };
+
+      spp::sparse_hash_map<uint64_t, std::unique_ptr<Region>> RegionsCache; 
+			std::vector<Region*> RegionWaitQueue;
+
+      State   CurrentState  = State::Interpreting; 
+      Region *CurrentRegion = nullptr;
+
+      SimulationStatistics Statistics;
+
+      Region* getRegionByEntry(uint64_t Addrs) { return RegionsCache[Addrs].get(); }
+
+			bool isWaitingCompile(uint64_t Addrs) {
+				for (auto R : RegionWaitQueue)
+					if (R->getEntry() == Addrs) return true;
+				return false; 
+			}
+
+      bool isRegionEntrance(uint64_t Addrs) { return RegionsCache.count(Addrs) != 0; }
+
+      InternStateTransition updateInternState(uint64_t);
+
+      void addRegion(Region* R) { RegionsCache[R->getEntry()].reset(R); }
 
     public:
-      Simulator(trace_io::raw_input_pipe_t IS) : InstStream(IS) {};
+      bool run(trace_io::raw_input_pipe_t, RFTHandler, WaitQueueHandler);
   };
 }

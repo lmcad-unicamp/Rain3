@@ -3,4 +3,4 @@ cmake_minimum_required (VERSION 2.6)
 add_subdirectory(arglib)
 add_subdirectory(tracelib)
 
-add_library(rainlib Simulator.cpp)
+add_library(rainlib Simulator.cpp RFTs/NET.cpp RFTs/RFTsCommon.cpp QueuePolicies/Policies.cpp)
