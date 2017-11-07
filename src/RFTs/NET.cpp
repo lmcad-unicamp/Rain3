@@ -1,22 +1,18 @@
-#include <sparsepp/spp.h>
 #include <RFTs.hpp>
 
 using namespace rain3;
 
-spp::sparse_hash_map<uint64_t, uint16_t> HotnessCounter;
-bool Recording          = false;
-Region *RecordingRegion = nullptr;
-
-Maybe<Region> RFTs::
-handleNewInstructionWithNET(trace_io::trace_item_t& LastInst, trace_io::trace_item_t& CurrentInst, InternStateTransition LastStateTransition) {
+Maybe<Region> NET::handleNewInstruction(trace_io::trace_item_t& LastInst, trace_io::trace_item_t& CurrentInst, InternStateTransition LastStateTransition) {
   if (Recording) {
-    if (wasBackwardBranch(LastInst, CurrentInst) || LastStateTransition == InterToNative)
+    if (/*wasBackwardBranch(LastInst, CurrentInst)*/ RecordingRegion->hasAddress(CurrentInst.addr) || RecordingRegion->getSize() > 100 || LastStateTransition == InterToNative)
       Recording = false;
 
-    if (Recording)
+    if (Recording) {
       RecordingRegion->addAddress(CurrentInst.addr);
-    else
+    } else {
+      RecordingRegion->setMainExit(LastInst.addr);
       return Maybe<Region>(RecordingRegion);
+    }
   } else {
     if ((LastStateTransition == StayedInter && wasBackwardBranch(LastInst, CurrentInst)) || LastStateTransition == NativeToInter) {
       if (HotnessCounter.count(CurrentInst.addr) == 0) HotnessCounter[CurrentInst.addr] = 1;
@@ -25,6 +21,7 @@ handleNewInstructionWithNET(trace_io::trace_item_t& LastInst, trace_io::trace_it
       if (isHot(HotnessCounter[CurrentInst.addr])) {
         Recording = true;
         RecordingRegion = new Region();
+        RecordingRegion->addAddress(CurrentInst.addr);
         RecordingRegion->setEntry(CurrentInst.addr);
         HotnessCounter[CurrentInst.addr] = 0;
       }

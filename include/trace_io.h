@@ -49,6 +49,33 @@ namespace trace_io {
     bool is_mem_read() { return (type == 0); }
     bool is_mem_write() { return (type == 1); }
     bool is_instruction() { return (type == 2); }
+    bool is_flow_control_inst() {
+      int op  = (int) (unsigned char) opcode[0];
+      int op1 = (int) (unsigned char) opcode[1];
+      return (op == 0xe8) // Call
+        || (op == 0xe9) // jmp near *
+        || (op == 0xc3) // ret void
+        || (op == 0xcb) // ret
+        || (op == 0xeb) // jmp short
+        || (op == 0x74) // je short
+        || (op == 0x0f && op1 == 0x84) // je near *
+        || (op == 0x78) // js short
+        || (op == 0x0f && op1 == 0x88) // js near *
+        || (op == 0x72) // jc short
+        || (op == 0x0f && op1 == 0x82) // jc near *
+        || (op == 0x7d) // jge short
+        || (op == 0x0f && op1 == 0x8d) // jge near *
+        || (op == 0x7f) // jg short
+        || (op == 0x0f && op1 == 0x8f) // jg near *
+        || (op == 0x75) // jne short
+        || (op == 0x0f && op1 == 0x85) // jne near *
+        || (op == 0x7c) // jl short
+        || (op == 0x0f && op1 == 0x8c) // jl near *
+        || (op == 0x7e) // jle short
+        || (op == 0x0f && op1 == 0x8e) // jle near *
+        || (op == 0x79) // jns short
+        || (op == 0x0f && op1 == 0x89); // jns near *
+    }
   };
 
   class input_pipe_t

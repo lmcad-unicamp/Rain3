@@ -5,23 +5,25 @@
 
 using namespace rain3;
 
-InternStateTransition Simulator::updateInternState(uint64_t NextAddrs) {
+InternStateTransition Simulator::updateInternState(uint64_t NextAddrs, bool ForceNativeExiting) {
   // Entrying Region: Interpreter -> NativeExecuting
-  if (CurrentState == State::Interpreting && isRegionEntrance(NextAddrs)) {
+  if (CurrentState == State::Interpreting && isRegionEntrance(NextAddrs) && !ForceNativeExiting) {
     CurrentState  = State::NativeExecuting;
     CurrentRegion = getRegionByEntry(NextAddrs); 
     return InternStateTransition::InterToNative;
   } 
   // Exiting Region: NativeExecution -> Dispatcher
-  else if (CurrentState == State::NativeExecuting && !CurrentRegion->hasAddress(NextAddrs)) {
+  else if (CurrentState == State::NativeExecuting && (!CurrentRegion->hasAddress(NextAddrs) || ForceNativeExiting)) {
     // Region Transition: NativeExecution (Dispatcher) -> NativeExecution
     if (isRegionEntrance(NextAddrs)) {
+      LastRegion    = CurrentRegion;
       CurrentRegion = getRegionByEntry(NextAddrs);
       return InternStateTransition::NativeToNative;
     } 
     // Exiting Native Execution: NativeExecution (Dispatcher) -> Interpreter
     else {
       CurrentState  = State::Interpreting;
+      LastRegion    = CurrentRegion;
       CurrentRegion = nullptr;
       return InternStateTransition::NativeToInter;
     }
@@ -31,43 +33,39 @@ InternStateTransition Simulator::updateInternState(uint64_t NextAddrs) {
   }
 }
 
-bool Simulator::run(trace_io::raw_input_pipe_t InstStream, RFTHandler RFTFunc, WaitQueueHandler WaitQueueFunc) {
-  // Current instruction.
-  Region* LastRegion = nullptr;
-  trace_io::trace_item_t LastInst, CurrentInst;
-
-  // Fetch the next instruction from the trace
-  if (!InstStream.get_next_instruction(LastInst) || !InstStream.get_next_instruction(CurrentInst)) {
-    cerr << "Error: input trace has no instruction items." << endl;
-    return false;
-  } 
-
-  // Iterate over all the instructions
-  do {
-    auto LastStateTransition = updateInternState(CurrentInst.addr);
-
-    // Only handle when not in native execution
-    if ((LastStateTransition == NativeToInter || LastStateTransition == StayedInter) && !isWaitingCompile(CurrentInst.addr)) {
-      Maybe<Region> MayRegion = RFTFunc(LastInst, CurrentInst, LastStateTransition);
-
-      // If a region was indeed created, then call the region queue handler and update the statistics
-      if (!MayRegion.isNothing()) { 
-				RegionWaitQueue.push_back(MayRegion.get());	
-        Statistics.addRegionInfo(MayRegion.get(), RegionWaitQueue.size());
-			}
+bool Simulator::run(trace_io::trace_item_t CurrentInst) {
+  // Simulate Indirect Branch Handlers
+  bool ForceNativeExiting = false;
+  if (LastInst.is_flow_control_inst()) {
+    bool WasAbleToTranslate = IBH->handleIB(LastInst, CurrentInst.addr, CurrentRegion);
+    if (CurrentState == NativeExecuting) {
+      ForceNativeExiting = !WasAbleToTranslate;
+      Statistics.missedIndirectAddrsTranslation();
     }
+  }
 
-		std::vector<Region*> Compiled = WaitQueueFunc(RegionWaitQueue);
+  auto LastStateTransition = updateInternState(CurrentInst.addr, ForceNativeExiting);
 
-		for (Region* R : Compiled) { 
-			addRegion(R);
-		}
+  // Only handle when not in native execution
+  if (CurrentState == Interpreting && !isWaitingCompile(CurrentInst.addr)) {
+    Maybe<Region> MayRegion = RFT->handleNewInstruction(LastInst, CurrentInst, LastStateTransition);
 
-    Statistics.updateData(CurrentInst.addr, LastInst.addr, LastStateTransition, CurrentRegion, LastRegion);
+    // If a region was indeed created, then call the region queue handler and update the statistics
+    if (!MayRegion.isNothing()) { 
+      RegionWaitQueue.push_back(MayRegion.get());	
+      Statistics.addRegionInfo(MayRegion.get(), RegionWaitQueue.size());
+    }
+  }
 
-    LastInst   = CurrentInst;
-    LastRegion = CurrentRegion;
-  } while (InstStream.get_next_instruction(CurrentInst));
+  std::vector<Region*> Compiled = QP->handleWaitQueueParallel(RegionWaitQueue);
 
+  for (Region* R : Compiled) 
+    addRegion(R);
+
+  Statistics.updateData(FilePrefix, CurrentInst.addr, LastInst.addr, RFT->getNumUsedCounters(), LastStateTransition, 
+      CurrentRegion, LastRegion, RegionWaitQueue.size());
+
+  LastInst   = CurrentInst;
+  LastRegion = CurrentRegion;
   return true;
 }

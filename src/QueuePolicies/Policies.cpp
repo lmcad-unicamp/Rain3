@@ -4,15 +4,11 @@
 
 using namespace rain3;
 
-constexpr uint8_t  NumThreads = 4;
-constexpr uint16_t InterNativeRatio = 100;
-
 std::vector<Region*> QueuePolicies::handleWaitQueueParallel(std::vector<Region*>& RegionsQueue) {
 	// Start given new tickets to new regions
-	for (Region* R : RegionsQueue) {
+	for (Region* R : RegionsQueue) 
 		if (R->getTicket() == 0)
-			R->setTicket(R->getSize()*InterNativeRatio);
-	}
+			R->setTicket(R->getSize()*InterNativeRatio+1);
 
 	std::vector<Region*> Compiled;
 

@@ -17,43 +17,44 @@
  *   Free Software Foundation, Inc.,                                       *
  *   59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
  ***************************************************************************/
+
 #include <arglib.h>
 #include <trace_io.h>
-
-#include <Simulator.hpp>
-#include <RFTs.hpp>
-#include <Policies.hpp>
-#include <IBHandlers.hpp>
+#include <sparsepp/spp.h>
+#include <fstream>
 
 int main() {
 
-  // Create the input pipe.
   trace_io::raw_input_pipe_t InstStream("/home/vanderson/dev/mestrado/Rain3/input/out", 201, 203);
 
-  std::vector<trace_io::trace_item_t> Insts;
+  spp::sparse_hash_map<uint64_t, uint32_t> Counter;
 
-  std::vector<rain3::Simulator*> Simulators;
-  
-  for (int HT = 50; HT < 10000; HT += HT)
-    Simulators.push_back(new rain3::Simulator("HT"+std::to_string(HT), new rain3::PerfectIBHandler(), new rain3::QueuePolicies(), new rain3::NET(HT)));
-  
+  std::vector<trace_io::trace_item_t> Insts;
+  std::vector<uint64_t> Touched;
+
   // Iterate over all the instructions
   do {
     Insts.clear();
 
     trace_io::trace_item_t I;
-    while (InstStream.get_next_instruction(I) && Insts.size() < 1000000)
-      Insts.push_back(I);
+    while (InstStream.get_next_instruction(I) && Insts.size() < 1000000) {
+      if (I.addr < 0xB2D05E00) 
+        Insts.push_back(I);
+    }
 
-    #pragma omp parallel for
-    for (uint32_t i = 0; i < Simulators.size(); i++) 
-      for (auto CurrentInst : Insts)
-        Simulators[i]->run(CurrentInst);
+    for (auto CurrentInst : Insts) {
+      if (Counter.count(CurrentInst.addr) != 0) {
+        Counter[CurrentInst.addr]++; 
+      } else {
+        Touched.push_back(CurrentInst.addr);
+        Counter[CurrentInst.addr] = 1; 
+      }
+    }
   } while (Insts.size() != 0);
 
-
-  for (uint32_t i = 0; i < Simulators.size(); i++) 
-    delete Simulators[i];
+  std::ofstream HistFile("hist.table");
+  for (auto I : Touched) 
+    HistFile << I << "\t" << Counter[I] << "\n"; 
 
 	return 0;
 }

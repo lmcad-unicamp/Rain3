@@ -21,7 +21,7 @@ cmake_minimum_required (VERSION 2.6)
 
 project (RAIn3)
 
-set(CMAKE_CXX_FLAGS "-Ofast -Werror -Wall -std=c++17 -fno-rtti -flto -fmax-errors=5")
+set(CMAKE_CXX_FLAGS "-Ofast -Werror -Wall -std=c++17 -flto -fopenmp")
 set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Ofast -flto")
 
 #set(CMAKE_CXX_FLAGS "-O0 -Werror -Wall -std=c++17 -fno-rtti -fmax-errors=5 -g")
@@ -33,7 +33,9 @@ include_directories ("${PROJECT_SOURCE_DIR}/include/")
 add_subdirectory(src)
 
 add_executable(rain3 main.cpp)
+add_executable(genhist generateHist.cpp)
 
 target_link_libraries (rain3 rainlib tracelib arglib)
+target_link_libraries (genhist rainlib tracelib arglib)
 
-INSTALL(TARGETS rain3 RUNTIME DESTINATION bin)
+INSTALL(TARGETS rain3 genhist RUNTIME DESTINATION bin)

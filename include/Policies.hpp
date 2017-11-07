@@ -5,8 +5,12 @@
 #include <vector>
 
 namespace rain3 {
-  namespace QueuePolicies {
-    std::vector<Region*> handleWaitQueueParallel(std::vector<Region*>&);
-  }
+  class QueuePolicies {
+    public:
+      uint8_t  NumThreads = 1;
+      uint32_t InterNativeRatio = 50;
+
+      std::vector<Region*> handleWaitQueueParallel(std::vector<Region*>&);
+  };
 }
 #endif

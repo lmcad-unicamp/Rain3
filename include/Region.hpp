@@ -26,10 +26,9 @@ namespace rain3 {
       uint64_t EntryAddrs, MainExitAddrs;
 
       uint32_t Ticket = 0;
-
+    public:
       std::vector<uint64_t> Instructions;
 
-    public:
       void addAddress(uint64_t NewAddress) {
         Instructions.push_back(NewAddress);
       };
