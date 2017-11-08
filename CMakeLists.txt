@@ -34,8 +34,10 @@ add_subdirectory(src)
 
 add_executable(rain3 main.cpp)
 add_executable(genhist generateHist.cpp)
+add_executable(gencfg generateDCFG.cpp)
 
 target_link_libraries (rain3 rainlib tracelib arglib)
 target_link_libraries (genhist rainlib tracelib arglib)
+target_link_libraries (gencfg rainlib tracelib arglib)
 
 INSTALL(TARGETS rain3 genhist RUNTIME DESTINATION bin)

@@ -38,7 +38,7 @@ int main() {
 
     trace_io::trace_item_t I;
     while (InstStream.get_next_instruction(I) && Insts.size() < 1000000) {
-      if (I.addr < 0xB2D05E00) 
+      if (I.addr < 0xC0000000)
         Insts.push_back(I);
     }
 
