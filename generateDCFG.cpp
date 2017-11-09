@@ -25,10 +25,13 @@
 #include <cmath>
 #include <string>
 
+#define addr_limit 0xF9CCD8A1C5080000 //0xB2D05E00
+
 int main(int argc, char** argv) {
   if (argc < 4) return 1;
   trace_io::raw_input_pipe_t InstStream(std::string(argv[1]).c_str(), atoi(argv[2]), atoi(argv[3]));
   trace_io::raw_input_pipe_t InstStream2(std::string(argv[1]).c_str(), atoi(argv[2]), atoi(argv[3]));
+  trace_io::raw_input_pipe_t InstStream3(std::string(argv[1]).c_str(), atoi(argv[2]), atoi(argv[3]));
 
   spp::sparse_hash_map<uint64_t, uint64_t> Counter;
   spp::sparse_hash_map<uint64_t, bool> Sources;
@@ -54,7 +57,7 @@ int main(int argc, char** argv) {
 
     trace_io::trace_item_t I;
     while (InstStream.get_next_instruction(I) && Insts.size() < 1000000) {
-      if (I.addr < 0xB2D05E00) { 
+      if (I.addr < addr_limit) { 
         Insts.push_back(I);
         if (lastAddr + lastSize != I.addr) {
           Sources[lastAddr] = true;
@@ -74,7 +77,7 @@ int main(int argc, char** argv) {
         Counter[CurrentInst.addr] = 1; 
       }
     }
-  } while (Insts.size() != 0);
+  } while (Insts.size() != 0  && Total < 2500000000);
 
   /* Construct the Edges */
   lastAddr = first.addr;
@@ -84,11 +87,11 @@ int main(int argc, char** argv) {
 
     trace_io::trace_item_t I;
     while (InstStream2.get_next_instruction(I) && Insts.size() < 1000000)
-      if (I.addr < 0xB2D05E00)
+      if (I.addr < addr_limit)
         Insts.push_back(I);
 
     for (auto CurrentInst : Insts) {
-      if (Sources[lastAddr] || Targets[CurrentInst.addr]) {
+      if (Sources.count(lastAddr) != 0 || Targets.count(CurrentInst.addr) != 0) {
         if (Edges.count(std::to_string(lastAddr) + std::to_string(CurrentInst.addr)) == 0) {
           Edges[std::to_string(lastAddr) + std::to_string(CurrentInst.addr)] = {lastAddr, CurrentInst.addr};
           EdgesCounter[std::to_string(lastAddr) + std::to_string(CurrentInst.addr)] = 1;
@@ -97,14 +100,17 @@ int main(int argc, char** argv) {
         }
         Sources[lastAddr] = true;
         Targets[CurrentInst.addr] = true;
-      }
+      } 
 
       lastAddr = CurrentInst.addr;
       lastSize = CurrentInst.length;
     }
-  } while (Insts.size() != 0);
+  } while (Insts.size() != 0  && Total < 2500000000);
 
   /* Construct the BBs */
+  std::vector<uint64_t> BBsOrder;
+  spp::sparse_hash_map<uint64_t, uint64_t> Snapshot;
+
   uint64_t CurrentBB = first.addr;
   uint64_t CurrentFreq = 0;
   uint64_t NumInst = 1;
@@ -115,6 +121,8 @@ int main(int argc, char** argv) {
       BBs[CurrentBB] = CurrentFreq;
       BBsEnd[LastI] = CurrentBB;
       BBsSize[CurrentBB] = NumInst;
+      Snapshot[CurrentBB] = 0;
+      BBsOrder.push_back(CurrentBB);
 
       TotalBBEntries += CurrentFreq * NumInst;
       CurrentBB = I;
@@ -131,8 +139,32 @@ int main(int argc, char** argv) {
   BBsEnd[LastI] = CurrentBB;
   TotalBBEntries += CurrentFreq * NumInst;
 
+  
+  std::ofstream SnapFile((std::string(argv[1]) + std::string("snapshots.table")).c_str());
+  for (uint64_t BBEntry : BBsOrder)
+    SnapFile << BBEntry << "\t";
+  SnapFile << "\n";
+  int i;
+  do {
+    i = 0;
+    trace_io::trace_item_t I;
+    while (InstStream3.get_next_instruction(I) && i < 2500000)
+      if (I.addr < addr_limit) {
+        i++;
+        if (Snapshot.count(I.addr) != 0)
+          Snapshot[I.addr] += 1;
+      }
+
+    for (uint64_t BBEntry : BBsOrder)
+      SnapFile << Snapshot[BBEntry] << "\t";
+    SnapFile << "\n";
+
+    for (auto S : Snapshot) 
+      Snapshot[S.first] = 0;
+  } while (i != 0  && Total < 2500000000);
+
   /* PRINT BBs and Edges */
-  std::ofstream HistFile("bbs.table");
+  std::ofstream HistFile((std::string(argv[1]) + std::string("bbs.table")).c_str());
   double Entropy = 0;
   uint64_t TotalFreq = 0;
   for (auto I : Touched) {
@@ -144,7 +176,7 @@ int main(int argc, char** argv) {
     TotalFreq += Counter[I];
   }
 
-  std::ofstream EdgesFile("edges.table");
+  std::ofstream EdgesFile((std::string(argv[1]) + std::string("edges.table")).c_str());
   for (auto E : Edges) {
     EdgesFile << BBsEnd[E.second.first] << "\t" << E.second.second << "\t" << EdgesCounter[E.first] << "\n";
   }
