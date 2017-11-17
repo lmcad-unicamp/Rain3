@@ -25,18 +25,22 @@
 #include <Policies.hpp>
 #include <IBHandlers.hpp>
 
-int main() {
+int main(int argv, char** argc) {
 
   // Create the input pipe.
-  trace_io::raw_input_pipe_t InstStream("/home/vanderson/dev/mestrado/Rain3/input/out", 201, 203);
+  trace_io::raw_input_pipe_t InstStream(argc[1], atoi(argc[2]), atoi(argc[3]));
 
   std::vector<trace_io::trace_item_t> Insts;
 
   std::vector<rain3::Simulator*> Simulators;
   
-  for (int HT = 50; HT < 10000; HT += HT)
-    Simulators.push_back(new rain3::Simulator("HT"+std::to_string(HT), new rain3::PerfectIBHandler(), new rain3::QueuePolicies(), new rain3::NET(HT)));
+  for (int Relaxed = 0; Relaxed < 2; Relaxed++) 
+    for (int HT = 50; HT < 20000; HT += HT/2)
+      Simulators.push_back(
+          new rain3::Simulator(std::string(argc[1])+"HT"+std::to_string(HT)+"Relaxed?"+std::to_string(Relaxed), 
+            new rain3::PerfectIBHandler(), new rain3::QueuePolicies(1, 0), new rain3::NET(HT, Relaxed)));
   
+  uint32_t TotalInstSimulated = 0;
   // Iterate over all the instructions
   do {
     Insts.clear();
@@ -49,7 +53,9 @@ int main() {
     for (uint32_t i = 0; i < Simulators.size(); i++) 
       for (auto CurrentInst : Insts)
         Simulators[i]->run(CurrentInst);
-  } while (Insts.size() != 0);
+
+    TotalInstSimulated += Insts.size();
+  } while (Insts.size() != 0 && TotalInstSimulated < 2500000000);
 
 
   for (uint32_t i = 0; i < Simulators.size(); i++) 

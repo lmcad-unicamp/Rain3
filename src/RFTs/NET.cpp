@@ -4,7 +4,9 @@ using namespace rain3;
 
 Maybe<Region> NET::handleNewInstruction(trace_io::trace_item_t& LastInst, trace_io::trace_item_t& CurrentInst, InternStateTransition LastStateTransition) {
   if (Recording) {
-    if (/*wasBackwardBranch(LastInst, CurrentInst)*/ RecordingRegion->hasAddress(CurrentInst.addr) || RecordingRegion->getSize() > 100 || LastStateTransition == InterToNative)
+    if ((wasBackwardBranch(LastInst, CurrentInst)      && !Relaxed) ||
+        (RecordingRegion->hasAddress(CurrentInst.addr) &&  Relaxed) || 
+        RecordingRegion->getSize() > 200 || LastStateTransition == InterToNative)
       Recording = false;
 
     if (Recording) {

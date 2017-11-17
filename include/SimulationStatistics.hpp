@@ -6,11 +6,6 @@
 #include <fstream>
 #include <memory>
 
-/* TODO:
- *  - Add the new metric per quantum.
- *  - Fix performance
- */
-
 namespace rain3 {
   class SimulationStatistics {
     spp::sparse_hash_map<uint64_t, uint32_t> RegionsInterEntryCounter, RegionsNativeEntryCounter, 
@@ -73,7 +68,7 @@ namespace rain3 {
           " Completion Ratio," <<
           " Number of used counters," <<
           " Cool Regions Ratio," <<
-          " Spanned Loop Ratio," <<
+          " Spanned Loop Per Region," <<
           " Compilation Wait Queue Size," <<
           " Maximium Reached Queue Size\n";
           
@@ -100,7 +95,7 @@ namespace rain3 {
       double CoolRegionsRatio = 0;
       double DuplicationRatio = 0;
       double RegionCov        = ((double) NativeTotalExecution) / (NativeTotalExecution+InterTotalExecution);
-      double RegionsSpanningLoopRatio = 0;
+      double RegionsSpanningLoop = 0;
 
       if (TotalRegionsEntry != 0) {
         AvgDynamicSize   = ((double) NativeTotalExecution) / TotalRegionsEntry;
@@ -111,8 +106,8 @@ namespace rain3 {
 
 
       if (TotalNumberOfRegions != 0) {
-        CoolRegionsRatio = ((double) countAllThat(RegionsTotalExecutionFreq, [] (uint32_t x) -> bool { return x < 2000; } )) / TotalNumberOfRegions;
-        RegionsSpanningLoopRatio = ((double) sumUpAllCounter(RegionSpannedFreq)) / TotalNumberOfRegions;
+        CoolRegionsRatio = ((double) countAllThat(RegionsTotalExecutionFreq, [] (uint32_t x) -> bool { return x < 10000; } )) / TotalNumberOfRegions;
+        RegionsSpanningLoop = ((double) sumUpAllCounter(RegionSpannedFreq)) / TotalNumberOfRegions;
         if (NumberOfCompiledInstructions != 0)
           DuplicationRatio = ((double) CompiledInstFreq.size()) / NumberOfCompiledInstructions;
       }
@@ -131,7 +126,7 @@ namespace rain3 {
       OverviewFile << CompletionRatio << ", ";
       OverviewFile << NumUsedCounters << ", ";
       OverviewFile << CoolRegionsRatio << ", ";
-      OverviewFile << RegionsSpanningLoopRatio << ", ";
+      OverviewFile << RegionsSpanningLoop << ", ";
       OverviewFile << WaitQueueSize << ", ";
       OverviewFile << MaxQueueSize << "\n";
 
