@@ -3,10 +3,42 @@
 
 #include <algorithm>
 #include <vector>
+#include <map>
 
 #include <trace_io.h>
 
 namespace rain3 {
+  class InstructionSet {
+    private:
+      std::map<uint64_t, char[16]> Instructions;
+
+    public:
+      std::map<uint64_t, char[16]>::const_iterator find(uint64_t addrs) const {
+        return Instructions.find(addrs);
+      }
+
+      std::map<uint64_t, char[16]>::const_iterator getEnd() const {
+        return Instructions.end();
+      }
+
+      const char* getOpcode(uint64_t addrs) const {
+        return Instructions.at(addrs);
+      }
+
+      bool hasInstruction(uint64_t addrs) const {
+        return Instructions.count(addrs) != 0;
+      }
+
+      void addInstruction(uint64_t addrs, char opcode[16]) {
+        for (int i = 0; i < 16; i++)
+          Instructions[addrs][i] = opcode[i];
+      }
+
+      size_t size() {
+        return Instructions.size();
+      }
+  };
+
   enum InternStateTransition { InterToNative, NativeToNative, NativeToInter, StayedNative, StayedInter};
 
   template <class X> class Maybe {

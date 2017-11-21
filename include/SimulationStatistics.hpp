@@ -149,15 +149,11 @@ namespace rain3 {
         increaseCounter(CurrentAddr, RegionsInterEntryCounter); 
         increaseCounter(CurrentAddr, RegionsTotalExecutionFreq); 
 
-        assert(LastRegion == nullptr && CurrentRegion != nullptr);
-
       } else if (StateTransition == NativeToNative) {
         NativeTotalExecution += 1;
         // Count the total number of entries in a region comming from other regions
         increaseCounter(CurrentAddr, RegionsNativeEntryCounter); 
         increaseCounter(CurrentAddr, RegionsTotalExecutionFreq); 
-
-        assert(CurrentRegion != LastRegion); 
 
         if (LastRegion->isMainExit(LastAddr))
           TotalRegionsMainExities += 1;
@@ -165,21 +161,15 @@ namespace rain3 {
         NativeTotalExecution += 1;
         increaseCounter(CurrentRegion->getEntry(), RegionsTotalExecutionFreq); 
 
-        assert(CurrentRegion == LastRegion);
-
         if (CurrentRegion->hasAddress(CurrentAddr) && CurrentAddr < LastAddr) 
           increaseCounter(CurrentAddr, RegionSpannedFreq); 
       } else if (StateTransition == NativeToInter) {
         InterTotalExecution += 1;
 
-        assert(LastRegion != nullptr && CurrentRegion == nullptr);
-
         if (LastRegion->isMainExit(LastAddr)) 
           TotalRegionsMainExities += 1;
       } else if (StateTransition == StayedInter) {
         InterTotalExecution += 1;
-
-        assert(LastRegion == nullptr && CurrentRegion == nullptr);
       }
 
       if (((InterTotalExecution + NativeTotalExecution) % 10000) == 0)

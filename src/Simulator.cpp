@@ -59,8 +59,14 @@ bool Simulator::run(trace_io::trace_item_t CurrentInst) {
 
   std::vector<Region*> Compiled = QP->handleWaitQueueParallel(RegionWaitQueue);
 
-  for (Region* R : Compiled) 
+  for (Region* R : Compiled) { 
     addRegion(R);
+
+    if (R->getEntry() == CurrentInst.addr) {
+      LastRegion = nullptr;
+      LastStateTransition = updateInternState(CurrentInst.addr, false);
+    }
+  }
 
   Statistics.updateData(FilePrefix, CurrentInst.addr, LastInst.addr, RFT->getNumUsedCounters(), LastStateTransition, 
       CurrentRegion, LastRegion, RegionWaitQueue.size());

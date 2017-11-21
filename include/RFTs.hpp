@@ -15,7 +15,12 @@ namespace rain3 {
       bool isHot(uint16_t); 
       bool wasBackwardBranch(trace_io::trace_item_t&, trace_io::trace_item_t&); 
 
+      InstructionSet* StaticCode;
+      spp::sparse_hash_map<uint64_t, std::unique_ptr<Region>>* RegionsCache;
+
     public:
+      void configure(auto SC, auto RC) { StaticCode = SC; RegionsCache = RC; }
+
       uint32_t getNumUsedCounters() { return HotnessCounter.size(); };
 
       RFTs(uint16_t HT) : HotnessThreshold(HT) {};
@@ -47,8 +52,28 @@ namespace rain3 {
       Region* mergePhases();
       uint32_t getStoredIndex(uint64_t);
     public:
-      MRET2(uint16_t HT, bool Rel = false) : RFTs(HT), Relaxed(Rel) {};
+      MRET2(uint16_t HT, bool Rel = false) : RFTs(HT/2), Relaxed(Rel) {};
       Maybe<Region> handleNewInstruction(trace_io::trace_item_t&, trace_io::trace_item_t&, InternStateTransition);
   };
+
+  class LEI : public RFTs {
+    private:
+      bool Relaxed = false;
+
+      struct branch_t {
+        uint64_t src, tgt;
+        InternStateTransition state;
+      };
+
+      std::vector<branch_t> Buf;
+      spp::sparse_hash_map<uint64_t, int32_t> BufHash;
+
+      uint32_t circularBufferInsert(uint64_t, uint64_t, InternStateTransition);
+      Region* formTrace(uint64_t, uint32_t);
+    public:
+      LEI(uint16_t HT, bool Rel = false) : RFTs(HT), Relaxed(Rel) {};
+      Maybe<Region> handleNewInstruction(trace_io::trace_item_t&, trace_io::trace_item_t&, InternStateTransition);
+  };
+
 }
 #endif

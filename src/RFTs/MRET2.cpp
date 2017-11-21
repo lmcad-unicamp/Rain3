@@ -31,7 +31,6 @@ uint32_t MRET2::getStoredIndex(uint64_t Addr) {
   return 0;
 }
 
-bool isFirstTime = true;
 Maybe<Region> MRET2::handleNewInstruction(trace_io::trace_item_t& LastInst, trace_io::trace_item_t& CurrentInst, InternStateTransition LastStateTransition) {
   if (Recording) {
     if ((wasBackwardBranch(LastInst, CurrentInst)      && !Relaxed) ||
@@ -57,11 +56,6 @@ Maybe<Region> MRET2::handleNewInstruction(trace_io::trace_item_t& LastInst, trac
   } else {
     if ((LastStateTransition == StayedInter && wasBackwardBranch(LastInst, CurrentInst)) || LastStateTransition == NativeToInter) {
       HotnessCounter[CurrentInst.addr] += 1;
-
-      if (isFirstTime) {
-        isFirstTime = false;
-        HotnessThreshold /= 2;
-      }
 
       if (isHot(HotnessCounter[CurrentInst.addr])) {
         Recording = true;

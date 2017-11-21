@@ -24,34 +24,51 @@
 #include <RFTs.hpp>
 #include <Policies.hpp>
 #include <IBHandlers.hpp>
+#include <Region.hpp>
 
-#define addr_limit 0xF9CCD8A1C5080000 
-//#define addr_limit 0xB2D05E00
+//#define addr_limit 0xF9CCD8A1C5080000 
+#define addr_limit 0xB2D05E00
+
+#define USES_STATIC
 
 int main(int argv, char** argc) {
-
   // Create the input pipe.
   trace_io::raw_input_pipe_t InstStream(argc[1], atoi(argc[2]), atoi(argc[3]));
+
+  rain3::InstructionSet StaticCode;
 
   std::vector<trace_io::trace_item_t> Insts;
 
   std::vector<rain3::Simulator*> Simulators;
-  
-  for (int Relaxed = 0; Relaxed < 2; Relaxed++) 
-    for (int HT = 50; HT < 20000; HT += HT/2)
-      Simulators.push_back(
-          new rain3::Simulator(std::string(argc[1])+"HT"+std::to_string(HT)+"Relaxed?"+std::to_string(Relaxed), 
-            new rain3::PerfectIBHandler(), new rain3::QueuePolicies(1, 0), new rain3::NET(HT, Relaxed)));
-  
+
+  for (int Relaxed = 0; Relaxed < 2; Relaxed++) {
+    for (int HT = 50; HT < 20000; HT += HT/2) {
+      auto Sim = new rain3::Simulator(std::string(argc[1])+"HT"+std::to_string(HT)+"Relaxed?"+std::to_string(Relaxed), 
+          new rain3::PerfectIBHandler(), new rain3::QueuePolicies(1, 0), new rain3::LEI(HT, Relaxed));
+
+#ifdef USES_STATIC
+      Sim->configureRFT(&StaticCode);
+#endif
+
+      Simulators.push_back(Sim);
+    }
+  }
+
   uint32_t TotalInstSimulated = 0;
   // Iterate over all the instructions
   do {
     Insts.clear();
 
     trace_io::trace_item_t I;
-    while (InstStream.get_next_instruction(I) && Insts.size() < 100000000)
-      if (I.addr < addr_limit)
+    while (InstStream.get_next_instruction(I) && Insts.size() < 1000000) {
+      if (I.addr < addr_limit) {
         Insts.push_back(I);
+      
+#ifdef USES_STATIC
+        StaticCode.addInstruction(I.addr, I.opcode);
+#endif
+      }
+    }
 
     #pragma omp parallel for
     for (uint32_t i = 0; i < Simulators.size(); i++) 

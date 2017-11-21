@@ -17,8 +17,7 @@ Maybe<Region> NET::handleNewInstruction(trace_io::trace_item_t& LastInst, trace_
     }
   } else {
     if ((LastStateTransition == StayedInter && wasBackwardBranch(LastInst, CurrentInst)) || LastStateTransition == NativeToInter) {
-      if (HotnessCounter.count(CurrentInst.addr) == 0) HotnessCounter[CurrentInst.addr] = 1;
-      else HotnessCounter[CurrentInst.addr] += 1;
+      HotnessCounter[CurrentInst.addr] += 1;
 
       if (isHot(HotnessCounter[CurrentInst.addr])) {
         Recording = true;

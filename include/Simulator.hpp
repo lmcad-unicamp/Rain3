@@ -11,50 +11,52 @@ namespace rain3 {
   typedef std::function<Maybe<Region>(trace_io::trace_item_t&, trace_io::trace_item_t&, InternStateTransition)> RFTHandler;
 
   class Simulator {
-      enum State { Interpreting, NativeExecuting };
+    enum State { Interpreting, NativeExecuting };
 
-      std::string FilePrefix;
+    std::string FilePrefix;
 
-      spp::sparse_hash_map<uint64_t, std::unique_ptr<Region>> RegionsCache; 
-			std::vector<Region*> RegionWaitQueue;
+    spp::sparse_hash_map<uint64_t, std::unique_ptr<Region>> RegionsCache; 
+    std::vector<Region*> RegionWaitQueue;
 
-      State   CurrentState  = State::Interpreting; 
-      Region *CurrentRegion = nullptr;
-      Region* LastRegion = nullptr;
-      trace_io::trace_item_t LastInst;
+    State   CurrentState  = State::Interpreting; 
+    Region *CurrentRegion = nullptr;
+    Region* LastRegion = nullptr;
+    trace_io::trace_item_t LastInst;
 
-      IBHandlers* IBH;
-      QueuePolicies* QP;
-      RFTs* RFT;
+    IBHandlers* IBH;
+    QueuePolicies* QP;
+    RFTs* RFT;
 
-      SimulationStatistics Statistics;
+    SimulationStatistics Statistics;
 
-      Region* getRegionByEntry(uint64_t Addrs) { return RegionsCache[Addrs].get(); }
+    Region* getRegionByEntry(uint64_t Addrs) { return RegionsCache[Addrs].get(); }
 
-			bool isWaitingCompile(uint64_t Addrs) {
-				for (auto R : RegionWaitQueue)
-					if (R->getEntry() == Addrs) return true;
-				return false; 
-			}
+    bool isWaitingCompile(uint64_t Addrs) {
+      for (auto R : RegionWaitQueue)
+        if (R->getEntry() == Addrs) return true;
+      return false; 
+    }
 
-      bool isRegionEntrance(uint64_t Addrs) { return RegionsCache.count(Addrs) != 0; }
+    bool isRegionEntrance(uint64_t Addrs) { return RegionsCache.count(Addrs) != 0; }
 
-      InternStateTransition updateInternState(uint64_t, bool);
+    InternStateTransition updateInternState(uint64_t, bool);
 
-      void addRegion(Region* R) { RegionsCache[R->getEntry()].reset(R); }
+    void addRegion(Region* R) { RegionsCache[R->getEntry()].reset(R); }
 
     public:
-      Simulator(std::string Prefix, IBHandlers* IB, QueuePolicies* Q, RFTs* R) {
-        QP = Q;
-        IBH = IB;
-        RFT = R;
-        FilePrefix = Prefix;
-      }
+    Simulator(std::string Prefix, IBHandlers* IB, QueuePolicies* Q, RFTs* R) {
+      QP = Q;
+      IBH = IB;
+      RFT = R;
+      FilePrefix = Prefix;
+    }
 
-      ~Simulator() {
-        Statistics.dumpToFile(FilePrefix + "final", true, true);
-      }
+    void configureRFT(auto SC) { RFT->configure(SC, &RegionsCache); }
 
-      bool run(trace_io::trace_item_t);
+    ~Simulator() {
+      Statistics.dumpToFile(FilePrefix + "final", true, true);
+    }
+
+    bool run(trace_io::trace_item_t);
   };
 }
