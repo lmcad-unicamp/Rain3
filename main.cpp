@@ -25,6 +25,9 @@
 #include <Policies.hpp>
 #include <IBHandlers.hpp>
 
+#define addr_limit 0xF9CCD8A1C5080000 
+//#define addr_limit 0xB2D05E00
+
 int main(int argv, char** argc) {
 
   // Create the input pipe.
@@ -46,8 +49,9 @@ int main(int argv, char** argc) {
     Insts.clear();
 
     trace_io::trace_item_t I;
-    while (InstStream.get_next_instruction(I) && Insts.size() < 1000000)
-      Insts.push_back(I);
+    while (InstStream.get_next_instruction(I) && Insts.size() < 100000000)
+      if (I.addr < addr_limit)
+        Insts.push_back(I);
 
     #pragma omp parallel for
     for (uint32_t i = 0; i < Simulators.size(); i++) 
