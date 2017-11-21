@@ -31,5 +31,24 @@ namespace rain3 {
       NET(uint16_t HT, bool Rel = false) : RFTs(HT), Relaxed(Rel) {};
       Maybe<Region> handleNewInstruction(trace_io::trace_item_t&, trace_io::trace_item_t&, InternStateTransition);
   };
+
+  class MRET2 : public RFTs {
+    private:
+      static constexpr uint32_t STORE_INDEX_SIZE = 100000;
+
+      bool Relaxed = false;
+
+      uint64_t Header;
+      spp::sparse_hash_map<uint64_t, uint8_t> Phases;
+
+      uint32_t BankIndex;
+      Region* RegionsBank[STORE_INDEX_SIZE];
+
+      Region* mergePhases();
+      uint32_t getStoredIndex(uint64_t);
+    public:
+      MRET2(uint16_t HT, bool Rel = false) : RFTs(HT), Relaxed(Rel) {};
+      Maybe<Region> handleNewInstruction(trace_io::trace_item_t&, trace_io::trace_item_t&, InternStateTransition);
+  };
 }
 #endif
