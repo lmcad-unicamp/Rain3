@@ -37,6 +37,21 @@ namespace rain3 {
       Maybe<Region> handleNewInstruction(trace_io::trace_item_t&, trace_io::trace_item_t&, InternStateTransition);
   };
 
+  class NETPlus : public RFTs {
+    private:
+      bool Relaxed = false;
+      bool Extended = false;
+      uint16_t DepthLimit = 10;
+
+			void expand(rain3::Region*);
+
+    public:
+      NETPlus(uint16_t HT, bool Rel = false, bool Ext = false, uint16_t DL = 10) : RFTs(HT), Relaxed(Rel), 
+        Extended(Ext),  DepthLimit(DL) {};
+
+      Maybe<Region> handleNewInstruction(trace_io::trace_item_t&, trace_io::trace_item_t&, InternStateTransition);
+  };
+
   class MRET2 : public RFTs {
     private:
       static constexpr uint32_t STORE_INDEX_SIZE = 100000;

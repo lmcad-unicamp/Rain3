@@ -44,7 +44,7 @@ int main(int argv, char** argc) {
   for (int Relaxed = 0; Relaxed < 2; Relaxed++) {
     for (int HT = 50; HT < 20000; HT += HT/2) {
       auto Sim = new rain3::Simulator(std::string(argc[1])+"HT"+std::to_string(HT)+"Relaxed?"+std::to_string(Relaxed), 
-          new rain3::PerfectIBHandler(), new rain3::QueuePolicies(1, 0), new rain3::LEI(HT, Relaxed));
+          new rain3::PerfectIBHandler(), new rain3::QueuePolicies(1, 0), new rain3::NETPlus(HT, Relaxed, true));
 
 #ifdef USES_STATIC
       Sim->configureRFT(&StaticCode);

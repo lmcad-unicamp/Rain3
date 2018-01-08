@@ -36,11 +36,13 @@ InternStateTransition Simulator::updateInternState(uint64_t NextAddrs, bool Forc
 bool Simulator::run(trace_io::trace_item_t CurrentInst) {
   // Simulate Indirect Branch Handlers
   bool ForceNativeExiting = false;
-  if (LastInst.is_flow_control_inst()) {
+  if (LastInst.is_indirect_branch_inst() && (LastInst.addr + LastInst.length) != CurrentInst.addr) {
     bool WasAbleToTranslate = IBH->handleIB(LastInst, CurrentInst.addr, CurrentRegion);
     if (CurrentState == NativeExecuting) {
       ForceNativeExiting = !WasAbleToTranslate;
-      Statistics.missedIndirectAddrsTranslation();
+
+      if (ForceNativeExiting)
+        Statistics.missedIndirectAddrsTranslation();
     }
   }
 

@@ -6,6 +6,7 @@ add_subdirectory(tracelib)
 add_library(rainlib 
   Simulator.cpp 
   RFTs/NET.cpp 
+  RFTs/NETPlus.cpp 
   RFTs/LEI.cpp 
   RFTs/MRET2.cpp 
   RFTs/RFTsCommon.cpp 

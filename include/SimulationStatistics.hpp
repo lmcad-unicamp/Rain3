@@ -54,7 +54,9 @@ namespace rain3 {
       double AverageStaticSize = ((double)NumberOfCompiledInstructions)/TotalNumberOfRegions;
 
       if (FirstStats) {
-        OverviewFile << " Total Number Of Regions," <<
+        OverviewFile << 
+          " 80\% Cover Set, " <<
+          " Total Number Of Regions," <<
           " Number Of Compiled Instructions," <<
           " Interpreter Total Execution Freq," <<
           " Native Total Execution Freq," <<
@@ -70,9 +72,9 @@ namespace rain3 {
           " Cool Regions Ratio," <<
           " Spanned Loop Per Region," <<
           " Compilation Wait Queue Size," <<
-          " Maximium Reached Queue Size\n";
+          " Maximium Reached Queue Size," <<
+          " Total Num of Missed IBs\n";
           
-      } else if (FinalStats) {
         std::vector<uint32_t> SortedRegFreq;
         for (auto R : RegionsTotalExecutionFreq)
           SortedRegFreq.push_back(R.second);
@@ -83,7 +85,7 @@ namespace rain3 {
         for (auto F : SortedRegFreq) {
           Set80 += 1;
           AccFreq += F;
-          if (((double)AccFreq) / (InterTotalExecution+NativeTotalExecution) > 0.8)
+          if ((((double)AccFreq) / (InterTotalExecution+NativeTotalExecution)) > 0.8)
             break;
         }
         OverviewFile << Set80 << ", ";
@@ -103,7 +105,6 @@ namespace rain3 {
         if (AverageStaticSize != 0)
           AvgDynamicSize2  = ((double) NativeTotalExecution) / (TotalRegionsEntry*AverageStaticSize);
       } 
-
 
       if (TotalNumberOfRegions != 0) {
         CoolRegionsRatio = ((double) countAllThat(RegionsTotalExecutionFreq, [] (uint32_t x) -> bool { return x < 10000; } )) / TotalNumberOfRegions;
@@ -128,7 +129,8 @@ namespace rain3 {
       OverviewFile << CoolRegionsRatio << ", ";
       OverviewFile << RegionsSpanningLoop << ", ";
       OverviewFile << WaitQueueSize << ", ";
-      OverviewFile << MaxQueueSize << "\n";
+      OverviewFile << MaxQueueSize << ", ";
+      OverviewFile << TotalMissedIndirectBranches << "\n";
 
       OverviewFile.close();
     }

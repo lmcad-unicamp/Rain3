@@ -34,6 +34,17 @@ namespace rain3 {
           Instructions[addrs][i] = opcode[i];
       }
 
+			trace_io::trace_item_t getTraceItem(uint64_t Addrs) {
+				trace_io::trace_item_t TI;
+				TI.type = 2;
+				TI.addr = Addrs;
+				const char* S = getOpcode(Addrs);
+				for (int i = 0; i < 16; i++) {
+					TI.opcode[i] = S[i];	
+				}
+				return TI;
+			}
+
       size_t size() {
         return Instructions.size();
       }

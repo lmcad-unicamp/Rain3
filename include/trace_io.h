@@ -22,143 +22,206 @@
 #define TRACE_IO_H
 
 #include <string>
+#include <vector>
 
 using namespace std;
 
 namespace trace_io {
-  
-  /** The trace contains a sequence of trace items, which are classified in three
-   *  types: 
-   *  0 -- memory read address
-   *  1 -- memory store address
-   *  2 -- instruction
-   * 
-   *  Instruction items may (or may not) be followed by memory addresses items
-   *  (type 0 or 1). These items indicate the memory address accessed by the
-   *  instruction before it.
-   */
 
-  struct trace_item_t
-  {
-    char               type;
-    unsigned long long addr;
-    char               opcode[16];
-    unsigned char      length;
-    unsigned char      mem_size;
+	/** The trace contains a sequence of trace items, which are classified in three
+	 *  types: 
+	 *  0 -- memory read address
+	 *  1 -- memory store address
+	 *  2 -- instruction
+	 * 
+	 *  Instruction items may (or may not) be followed by memory addresses items
+	 *  (type 0 or 1). These items indicate the memory address accessed by the
+	 *  instruction before it.
+	 */
 
-    bool is_mem_read() { return (type == 0); }
-    bool is_mem_write() { return (type == 1); }
-    bool is_instruction() { return (type == 2); }
-    bool is_flow_control_inst() {
-      int op  = (int) (unsigned char) opcode[0];
-      int op1 = (int) (unsigned char) opcode[1];
-      return (op == 0xe8) // Call
-        || (op == 0xe9) // jmp near *
-        || (op == 0xc3) // ret void
-        || (op == 0xcb) // ret
-        || (op == 0xeb) // jmp short
-        || (op == 0x74) // je short
-        || (op == 0x0f && op1 == 0x84) // je near *
-        || (op == 0x78) // js short
-        || (op == 0x0f && op1 == 0x88) // js near *
-        || (op == 0x72) // jc short
-        || (op == 0x0f && op1 == 0x82) // jc near *
-        || (op == 0x7d) // jge short
-        || (op == 0x0f && op1 == 0x8d) // jge near *
-        || (op == 0x7f) // jg short
-        || (op == 0x0f && op1 == 0x8f) // jg near *
-        || (op == 0x75) // jne short
-        || (op == 0x0f && op1 == 0x85) // jne near *
-        || (op == 0x7c) // jl short
-        || (op == 0x0f && op1 == 0x8c) // jl near *
-        || (op == 0x7e) // jle short
-        || (op == 0x0f && op1 == 0x8e) // jle near *
-        || (op == 0x79) // jns short
-        || (op == 0x0f && op1 == 0x89); // jns near *
-    }
-  };
+	struct trace_item_t
+	{
+		char               type;
+		unsigned long long addr;
+		char               opcode[16];
+		unsigned char      length;
+		unsigned char      mem_size;
 
-  class input_pipe_t
-  {
-  public:
-    /** Gets the next item on the trace. Returns true if the item was retrieved,
-	false if there are no more items. */
-    virtual bool get_next_item(trace_item_t& item) = 0;
+		bool is_mem_read() { return (type == 0); }
+		bool is_mem_write() { return (type == 1); }
+		bool is_instruction() { return (type == 2); }
+		bool is_indirect_branch_inst() {
+			int op  = (int) (unsigned char) opcode[0];
+			return (op == 0x77); 
+		}
+		bool is_flow_control_inst() {
+			int op  = (int) (unsigned char) opcode[0];
+			int op1 = (int) (unsigned char) opcode[1];
+			return (op == 0xe8) // Call
+				|| (op == 0xe9) // jmp near *
+				|| (op == 0xc3) // ret void
+				|| (op == 0xcb) // ret
+				|| (op == 0xeb) // jmp short
+				|| (op == 0x74) // je short
+				|| (op == 0x0f && op1 == 0x84) // je near *
+				|| (op == 0x78) // js short
+				|| (op == 0x0f && op1 == 0x88) // js near *
+				|| (op == 0x72) // jc short
+				|| (op == 0x0f && op1 == 0x82) // jc near *
+				|| (op == 0x7d) // jge short
+				|| (op == 0x0f && op1 == 0x8d) // jge near *
+				|| (op == 0x7f) // jg short
+				|| (op == 0x0f && op1 == 0x8f) // jg near *
+				|| (op == 0x75) // jne short
+				|| (op == 0x0f && op1 == 0x85) // jne near *
+				|| (op == 0x7c) // jl short
+				|| (op == 0x0f && op1 == 0x8c) // jl near *
+				|| (op == 0x7e) // jle short
+				|| (op == 0x0f && op1 == 0x8e) // jle near *
+				|| (op == 0x79) // jns short
+				|| (op == 0x0f && op1 == 0x89); // jns near *
+		}
 
-    /** Gets the next instruction from the trace. Similar to get_next_item, but
-	ignores non-instruction items. */
-    virtual bool get_next_instruction(trace_item_t& item) = 0;
-  };
+		union int32 {
+			int i;
+			char bytes[4];
+		};
 
-  class output_pipe_t
-  {
-  public:
-    /** Writes the next item to the trace. */
-    virtual void write_trace_item(trace_item_t& item) = 0;
-  };
+		vector<unsigned long long> 
+			getPossibleNextAddrs() {
+				int op  = (int) (unsigned char) opcode[0];
+				int op1 = (int) (unsigned char) opcode[1];
 
-  class raw_input_pipe_t : public input_pipe_t {
-  public:
+				vector<unsigned long long> nextAddrs;
+				if (op == 0xe8 || op == 0xe9) {  // Call and near JMP
 
-    /** Constructor */
-  raw_input_pipe_t(const string& b, int s_idx, int e_idx) : 
-    basename(b), start_idx(s_idx), end_idx(e_idx), curr_idx(s_idx), current_fh(NULL)
-    {};
-    
-    /** Destructor */
-    ~raw_input_pipe_t();
+					union int32 offset;
+					offset.bytes[0] = opcode[1];
+					offset.bytes[1] = opcode[2];
+					offset.bytes[2] = opcode[3];
+					offset.bytes[3] = opcode[4];
 
-    /** Gets the next item on the trace. Returns true if the item was retrieved,
-	false if there are no more items. */
-    bool get_next_item(trace_item_t& item);
+					nextAddrs.push_back(addr+5+offset.i);
+				} else if // Near branches 
+					( (op == 0x0f && op1 == 0x84)
+						|| (op == 0x0f && op1 == 0x88)
+						|| (op == 0x0f && op1 == 0x8c)
+						|| (op == 0x0f && op1 == 0x89)
+						|| (op == 0x0f && op1 == 0x85)
+						|| (op == 0x0f && op1 == 0x8e)
+						|| (op == 0x0f && op1 == 0x82)
+						|| (op == 0x0f && op1 == 0x8d)
+						|| (op == 0x0f && op1 == 0x8f)
+					) { // near
 
-    /** Gets the next instruction from the trace. Similar to get_next_item, but
-	ignores non-instruction items. */
-    bool get_next_instruction(trace_item_t& item) {
-      do {
-	if (!get_next_item(item)) 
-	  return false;
-      } while (!item.is_instruction());
-      return true;
-    }
-    
-  private:
-    string basename;
-    int start_idx;
-    int end_idx;
-    
-    // Current index;
-    int curr_idx;
-    // Current file handler
-    FILE* current_fh;
+						union int32 offset;
+						offset.bytes[0] = opcode[2];
+						offset.bytes[1] = opcode[3];
+						offset.bytes[2] = opcode[4];
+						offset.bytes[3] = opcode[5];
 
-    string sys_cmd;
-  };
+						nextAddrs.push_back(addr+6+offset.i);
+					} else if // short branches
+						(    op == 0xeb || op == 0x74 || op == 0x78 
+								 || op == 0x72 || op == 0x7d || op == 0x7f 
+								 || op == 0x7c || op == 0x79 || op == 0x75 || op == 0x7e) {
 
-  class raw_output_pipe_t : public output_pipe_t 
-  {
-  public:
+							nextAddrs.push_back(addr+2+ (signed char) opcode[1]);
+						}
 
-    /** Constructor */
-  raw_output_pipe_t(const string& out_filename) : 
-    basename(out_filename), fh(NULL)
-    {};
-    
-    /** Destructor */
-    ~raw_output_pipe_t();
+					// If it is not a jmp, call or ret
+					if (op != 0xe9 && op != 0xeb && op != 0xc3) {
+						if (op == 0x0f)
+							nextAddrs.push_back(addr+6);
+						else
+							nextAddrs.push_back(addr+2);
+					}
 
-    /** Writes the next item to the trace. */
-    void write_trace_item(trace_item_t& item);
-    
-  private:
-    string basename;
-    // Current file handler
-    FILE* fh;
+					return nextAddrs;
+			}
+	};
 
-    string sys_cmd;
-  };
+	class input_pipe_t
+	{
+		public:
+			/** Gets the next item on the trace. Returns true if the item was retrieved,
+				false if there are no more items. */
+			virtual bool get_next_item(trace_item_t& item) = 0;
 
-  
+			/** Gets the next instruction from the trace. Similar to get_next_item, but
+				ignores non-instruction items. */
+			virtual bool get_next_instruction(trace_item_t& item) = 0;
+	};
+
+	class output_pipe_t
+	{
+		public:
+			/** Writes the next item to the trace. */
+			virtual void write_trace_item(trace_item_t& item) = 0;
+	};
+
+	class raw_input_pipe_t : public input_pipe_t {
+		public:
+
+			/** Constructor */
+			raw_input_pipe_t(const string& b, int s_idx, int e_idx) : 
+				basename(b), start_idx(s_idx), end_idx(e_idx), curr_idx(s_idx), current_fh(NULL)
+		{};
+
+			/** Destructor */
+			~raw_input_pipe_t();
+
+			/** Gets the next item on the trace. Returns true if the item was retrieved,
+				false if there are no more items. */
+			bool get_next_item(trace_item_t& item);
+
+			/** Gets the next instruction from the trace. Similar to get_next_item, but
+				ignores non-instruction items. */
+			bool get_next_instruction(trace_item_t& item) {
+				do {
+					if (!get_next_item(item)) 
+						return false;
+				} while (!item.is_instruction());
+				return true;
+			}
+
+		private:
+			string basename;
+			int start_idx;
+			int end_idx;
+
+			// Current index;
+			int curr_idx;
+			// Current file handler
+			FILE* current_fh;
+
+			string sys_cmd;
+	};
+
+	class raw_output_pipe_t : public output_pipe_t 
+	{
+		public:
+
+			/** Constructor */
+			raw_output_pipe_t(const string& out_filename) : 
+				basename(out_filename), fh(NULL)
+		{};
+
+			/** Destructor */
+			~raw_output_pipe_t();
+
+			/** Writes the next item to the trace. */
+			void write_trace_item(trace_item_t& item);
+
+		private:
+			string basename;
+			// Current file handler
+			FILE* fh;
+
+			string sys_cmd;
+	};
+
+
 };
 
 #endif  // TRACE_IO_H
