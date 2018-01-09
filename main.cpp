@@ -42,8 +42,8 @@ int main(int argv, char** argc) {
 
   // ---------------------------- NET ------------------------- //
   for (int Relaxed = 0; Relaxed < 2; Relaxed++) {
-    for (int HT = 32; HT < 33000; HT *= 2) {
-      auto Sim = new rain3::Simulator("NET:"+std::string(argc[1])+"&HT?"+std::to_string(HT)+"&Relaxed?"+std::to_string(Relaxed), 
+    for (int HT = 32; HT < 17000; HT *= 2) {
+      auto Sim = new rain3::Simulator(std::string(argc[1])+"-NET-HT?"+std::to_string(HT)+"-Relaxed?"+std::to_string(Relaxed), 
           new rain3::PerfectIBHandler(), new rain3::QueuePolicies(1, 0), new rain3::NET(HT, Relaxed));
 
       Sim->configureRFT(&StaticCode);
@@ -54,8 +54,8 @@ int main(int argv, char** argc) {
 
   // ---------------------------- MRET2 ------------------------- //
   for (int Relaxed = 0; Relaxed < 2; Relaxed++) {
-    for (int HT = 32; HT < 33000; HT *= 2) {
-      auto Sim = new rain3::Simulator("MRET2:"+std::string(argc[1])+"&HT?"+std::to_string(HT)+"&Relaxed?"+std::to_string(Relaxed), 
+    for (int HT = 32; HT < 17000; HT *= 2) {
+      auto Sim = new rain3::Simulator(std::string(argc[1])+"MRET2-HT?"+std::to_string(HT)+"-Relaxed?"+std::to_string(Relaxed), 
           new rain3::PerfectIBHandler(), new rain3::QueuePolicies(1, 0), new rain3::MRET2(HT, Relaxed));
 
       Sim->configureRFT(&StaticCode);
@@ -65,11 +65,11 @@ int main(int argv, char** argc) {
   }
 
   // ---------------------------- NETPlus ------------------------- //
-  for (int Depth = 2; Depth < 64; Depth *= 2) {
+  for (int Depth = 4; Depth < 14; Depth += 2) {
     for (int Extended = 0; Extended < 2; Extended++) {
       for (int Relaxed = 0; Relaxed < 2; Relaxed++) {
-        for (int HT = 32; HT < 33000; HT *= 2) {
-          auto Sim = new rain3::Simulator("NETPlus:"+std::string(argc[1])+"&HT?"+std::to_string(HT)+"&Relaxed?"+std::to_string(Relaxed)+"&Extended?"+std::to_string(Extended)+"&depth?"+std::to_string(Depth), 
+        for (int HT = 32; HT < 17000; HT *= 2) {
+          auto Sim = new rain3::Simulator(std::string(argc[1])+"NETPlus-HT?"+std::to_string(HT)+"-Relaxed?"+std::to_string(Relaxed)+"-Extended?"+std::to_string(Extended)+"-depth?"+std::to_string(Depth), 
               new rain3::PerfectIBHandler(), new rain3::QueuePolicies(1, 0), new rain3::NETPlus(HT, Relaxed, Extended, Depth));
 
           Sim->configureRFT(&StaticCode);
@@ -82,7 +82,7 @@ int main(int argv, char** argc) {
 
   // ---------------------------- LEI ------------------------- //
   for (int HT = 32; HT < 33000; HT *= 2) {
-    auto Sim = new rain3::Simulator("LEI:"+std::string(argc[1])+"&HT?"+std::to_string(HT), 
+    auto Sim = new rain3::Simulator(std::string(argc[1])+"LEI-HT?"+std::to_string(HT), 
         new rain3::PerfectIBHandler(), new rain3::QueuePolicies(1, 0), new rain3::LEI(HT*0.7));
 
     Sim->configureRFT(&StaticCode);
@@ -90,7 +90,7 @@ int main(int argv, char** argc) {
     Simulators.push_back(Sim);
   }
 
-  std::cout << "We are going to simulate " << Simulators.size() << " DBTs configurations with a " << argc[4] << " bench.\n";
+  std::cout << "We are going to simulate " << Simulators.size() << " DBTs configurations with a " << argc[4] << "(" << addr_limit << ") bench.\n";
 
   uint32_t TotalInstSimulated = 0;
   // Iterate over all the instructions

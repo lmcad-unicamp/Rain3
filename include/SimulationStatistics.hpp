@@ -74,6 +74,9 @@ namespace rain3 {
           " Compilation Wait Queue Size," <<
           " Maximium Reached Queue Size," <<
           " Total Num of Missed IBs\n";
+      } 
+      
+      if (FinalStats) {
           
         std::vector<uint32_t> SortedRegFreq;
         for (auto R : RegionsTotalExecutionFreq)
@@ -174,7 +177,7 @@ namespace rain3 {
         InterTotalExecution += 1;
       }
 
-      if (((InterTotalExecution + NativeTotalExecution) % 10000) == 0)
+      if (((InterTotalExecution + NativeTotalExecution) % 10000) == 0) 
         dumpToFile(Prefix, false, NumberOfStats++ ? false : true);
     }
 
