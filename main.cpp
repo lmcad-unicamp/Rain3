@@ -26,14 +26,13 @@
 #include <IBHandlers.hpp>
 #include <Region.hpp>
 
-//#define addr_limit 0xF9CCD8A1C5080000 
-#define addr_limit 0xB2D05E00
-
-#define USES_STATIC
-
 int main(int argv, char** argc) {
+  uint64_t addr_limit = 0;
   // Create the input pipe.
   trace_io::raw_input_pipe_t InstStream(argc[1], atoi(argc[2]), atoi(argc[3]));
+
+  if (std::string(argc[4]) == "spec") addr_limit = 0xB2D05E00;
+  else addr_limit = 0xF9CCD8A1C5080000;
 
   rain3::InstructionSet StaticCode;
 
@@ -41,18 +40,57 @@ int main(int argv, char** argc) {
 
   std::vector<rain3::Simulator*> Simulators;
 
+  // ---------------------------- NET ------------------------- //
   for (int Relaxed = 0; Relaxed < 2; Relaxed++) {
-    for (int HT = 50; HT < 20000; HT += HT/2) {
-      auto Sim = new rain3::Simulator(std::string(argc[1])+"HT"+std::to_string(HT)+"Relaxed?"+std::to_string(Relaxed), 
-          new rain3::PerfectIBHandler(), new rain3::QueuePolicies(1, 0), new rain3::NETPlus(HT, Relaxed, true));
+    for (int HT = 32; HT < 33000; HT *= 2) {
+      auto Sim = new rain3::Simulator("NET:"+std::string(argc[1])+"&HT?"+std::to_string(HT)+"&Relaxed?"+std::to_string(Relaxed), 
+          new rain3::PerfectIBHandler(), new rain3::QueuePolicies(1, 0), new rain3::NET(HT, Relaxed));
 
-#ifdef USES_STATIC
       Sim->configureRFT(&StaticCode);
-#endif
 
       Simulators.push_back(Sim);
     }
   }
+
+  // ---------------------------- MRET2 ------------------------- //
+  for (int Relaxed = 0; Relaxed < 2; Relaxed++) {
+    for (int HT = 32; HT < 33000; HT *= 2) {
+      auto Sim = new rain3::Simulator("MRET2:"+std::string(argc[1])+"&HT?"+std::to_string(HT)+"&Relaxed?"+std::to_string(Relaxed), 
+          new rain3::PerfectIBHandler(), new rain3::QueuePolicies(1, 0), new rain3::MRET2(HT, Relaxed));
+
+      Sim->configureRFT(&StaticCode);
+
+      Simulators.push_back(Sim);
+    }
+  }
+
+  // ---------------------------- NETPlus ------------------------- //
+  for (int Depth = 2; Depth < 64; Depth *= 2) {
+    for (int Extended = 0; Extended < 2; Extended++) {
+      for (int Relaxed = 0; Relaxed < 2; Relaxed++) {
+        for (int HT = 32; HT < 33000; HT *= 2) {
+          auto Sim = new rain3::Simulator("NETPlus:"+std::string(argc[1])+"&HT?"+std::to_string(HT)+"&Relaxed?"+std::to_string(Relaxed)+"&Extended?"+std::to_string(Extended)+"&depth?"+std::to_string(Depth), 
+              new rain3::PerfectIBHandler(), new rain3::QueuePolicies(1, 0), new rain3::NETPlus(HT, Relaxed, Extended, Depth));
+
+          Sim->configureRFT(&StaticCode);
+
+          Simulators.push_back(Sim);
+        }
+      }
+    }
+  }
+
+  // ---------------------------- LEI ------------------------- //
+  for (int HT = 32; HT < 33000; HT *= 2) {
+    auto Sim = new rain3::Simulator("LEI:"+std::string(argc[1])+"&HT?"+std::to_string(HT), 
+        new rain3::PerfectIBHandler(), new rain3::QueuePolicies(1, 0), new rain3::LEI(HT*0.7));
+
+    Sim->configureRFT(&StaticCode);
+
+    Simulators.push_back(Sim);
+  }
+
+  std::cout << "We are going to simulate " << Simulators.size() << " DBTs configurations with a " << argc[4] << " bench.\n";
 
   uint32_t TotalInstSimulated = 0;
   // Iterate over all the instructions
@@ -60,13 +98,10 @@ int main(int argv, char** argc) {
     Insts.clear();
 
     trace_io::trace_item_t I;
-    while (InstStream.get_next_instruction(I) && Insts.size() < 1000000) {
+    while (InstStream.get_next_instruction(I) && Insts.size() < 10000000) {
       if (I.addr < addr_limit) {
         Insts.push_back(I);
-      
-#ifdef USES_STATIC
         StaticCode.addInstruction(I.addr, I.opcode);
-#endif
       }
     }
 
@@ -82,5 +117,5 @@ int main(int argv, char** argc) {
   for (uint32_t i = 0; i < Simulators.size(); i++) 
     delete Simulators[i];
 
-	return 0;
+  return 0;
 }

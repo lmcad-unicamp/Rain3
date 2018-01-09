@@ -78,9 +78,8 @@ void NETPlus::expand(Region* R) {
 						break;
 					}
 
-//TODO
-/*					if (isRegionEntrance(it->first))
-						break;*/
+					if (RegionsCache->count(it->first) != 0)
+						break;
 
 					if (StaticCode->getTraceItem(it->first).is_flow_control_inst() && distance.count(it->first) == 0) {
 						s.push(it->first);
