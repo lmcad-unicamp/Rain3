@@ -21,7 +21,7 @@ namespace rain3 {
 
   struct SharedCacheIBHandler : public IBHandlers {
     uint32_t Last = 0;
-    std::array<uint64_t, 1000> SharedCache; 
+    std::array<uint64_t, 500> SharedCache; 
 
     bool handleIB(trace_io::trace_item_t&, uint64_t, Region*);
 
@@ -32,7 +32,7 @@ namespace rain3 {
 
   struct SoleCacheIBHandler : public IBHandlers {
     spp::sparse_hash_map<uint64_t, uint8_t> SoleCacheLast; 
-    spp::sparse_hash_map<uint64_t, std::array<uint64_t, 4>> SoleCache; 
+    spp::sparse_hash_map<uint64_t, std::array<uint64_t, 2>> SoleCache; 
 
     bool handleIB(trace_io::trace_item_t&, uint64_t, Region*);
 

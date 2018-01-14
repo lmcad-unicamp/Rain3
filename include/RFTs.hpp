@@ -23,6 +23,9 @@ namespace rain3 {
 
       uint32_t getNumUsedCounters() { return HotnessCounter.size(); };
 
+      uint16_t getHotnessThreshold() { return HotnessThreshold; }
+      void setHotnessThreshold(uint16_t HT) { HotnessThreshold = HT; }
+
       RFTs(uint16_t HT) : HotnessThreshold(HT) {};
 
       virtual Maybe<Region> handleNewInstruction(trace_io::trace_item_t&, trace_io::trace_item_t&, InternStateTransition) = 0;

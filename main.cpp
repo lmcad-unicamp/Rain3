@@ -40,55 +40,128 @@ int main(int argv, char** argc) {
 
   std::vector<rain3::Simulator*> Simulators;
 
-  // ---------------------------- NET ------------------------- //
+  int HT = 1024;
+  
   for (int Relaxed = 0; Relaxed < 2; Relaxed++) {
-    for (int HT = 32; HT < 17000; HT *= 2) {
-      auto Sim = new rain3::Simulator(std::string(argc[1])+"-NET-HT?"+std::to_string(HT)+"-Relaxed?"+std::to_string(Relaxed), 
-          new rain3::PerfectIBHandler(), new rain3::QueuePolicies(1, 0), new rain3::NET(HT, Relaxed));
-
-      Sim->configureRFT(&StaticCode);
-
-      Simulators.push_back(Sim);
-    }
-  }
-
-  // ---------------------------- MRET2 ------------------------- //
-  for (int Relaxed = 0; Relaxed < 2; Relaxed++) {
-    for (int HT = 32; HT < 17000; HT *= 2) {
-      auto Sim = new rain3::Simulator(std::string(argc[1])+"MRET2-HT?"+std::to_string(HT)+"-Relaxed?"+std::to_string(Relaxed), 
-          new rain3::PerfectIBHandler(), new rain3::QueuePolicies(1, 0), new rain3::MRET2(HT, Relaxed));
-
-      Sim->configureRFT(&StaticCode);
-
-      Simulators.push_back(Sim);
-    }
-  }
-
-  // ---------------------------- NETPlus ------------------------- //
-  for (int Depth = 4; Depth < 14; Depth += 2) {
-    for (int Extended = 0; Extended < 2; Extended++) {
-      for (int Relaxed = 0; Relaxed < 2; Relaxed++) {
-        for (int HT = 32; HT < 17000; HT *= 2) {
-          auto Sim = new rain3::Simulator(std::string(argc[1])+"NETPlus-HT?"+std::to_string(HT)+"-Relaxed?"+std::to_string(Relaxed)+"-Extended?"+std::to_string(Extended)+"-depth?"+std::to_string(Depth), 
-              new rain3::PerfectIBHandler(), new rain3::QueuePolicies(1, 0), new rain3::NETPlus(HT, Relaxed, Extended, Depth));
-
-          Sim->configureRFT(&StaticCode);
-
-          Simulators.push_back(Sim);
-        }
-      }
-    }
-  }
-
-  // ---------------------------- LEI ------------------------- //
-  for (int HT = 32; HT < 33000; HT *= 2) {
-    auto Sim = new rain3::Simulator(std::string(argc[1])+"LEI-HT?"+std::to_string(HT), 
-        new rain3::PerfectIBHandler(), new rain3::QueuePolicies(1, 0), new rain3::LEI(HT*0.7));
+    //    for (int HT = 32; HT < 17000; HT *= 2) {
+    int HT = 1024;
+    auto Sim = new rain3::Simulator(std::string(argc[1])+"-NET-HT?"+std::to_string(HT)+"-Relaxed?"+std::to_string(Relaxed)+"-oneif", 
+        new rain3::OneIfIBHandler(), new rain3::QueuePolicies(2, 400), new rain3::NET(HT, Relaxed));
 
     Sim->configureRFT(&StaticCode);
 
     Simulators.push_back(Sim);
   }
+  for (int Relaxed = 0; Relaxed < 2; Relaxed++) {
+    //    for (int HT = 32; HT < 17000; HT *= 2) {
+    auto Sim = new rain3::Simulator(std::string(argc[1])+"MRET2-HT?"+std::to_string(HT)+"-Relaxed?"+std::to_string(Relaxed)+"-oneif", 
+        new rain3::OneIfIBHandler(), new rain3::QueuePolicies(1, 0), new rain3::MRET2(HT, Relaxed));
+
+    Sim->configureRFT(&StaticCode);
+
+    Simulators.push_back(Sim);
+  }
+  for (int Extended = 0; Extended < 2; Extended++) {
+    for (int Relaxed = 0; Relaxed < 2; Relaxed++) {
+
+      int Depth = 10;
+      auto Sim = new rain3::Simulator(std::string(argc[1])+"NETPlus-HT?"+std::to_string(HT)+"-Relaxed?"+std::to_string(Relaxed)+"-Extended?"+std::to_string(Extended)+"-depth?"+std::to_string(Depth)+"-oneif", 
+          new rain3::OneIfIBHandler(), new rain3::QueuePolicies(1, 0), new rain3::NETPlus(HT, Relaxed, Extended, Depth));
+
+      Sim->configureRFT(&StaticCode);
+
+      Simulators.push_back(Sim);
+    }
+  }
+  {
+    auto Sim = new rain3::Simulator(std::string(argc[1])+"LEI-HT?"+std::to_string(HT)+"-oneif", 
+        new rain3::OneIfIBHandler(), new rain3::QueuePolicies(1, 0), new rain3::LEI(HT*0.7));
+
+    Sim->configureRFT(&StaticCode);
+
+    Simulators.push_back(Sim);
+  }
+  //
+  for (int Relaxed = 0; Relaxed < 2; Relaxed++) {
+    //    for (int HT = 32; HT < 17000; HT *= 2) {
+    int HT = 1024;
+    auto Sim = new rain3::Simulator(std::string(argc[1])+"-NET-HT?"+std::to_string(HT)+"-Relaxed?"+std::to_string(Relaxed)+"-SoleCache", 
+        new rain3::SoleCacheIBHandler(), new rain3::QueuePolicies(2, 400), new rain3::NET(HT, Relaxed));
+
+    Sim->configureRFT(&StaticCode);
+
+    Simulators.push_back(Sim);
+  }
+  for (int Relaxed = 0; Relaxed < 2; Relaxed++) {
+    //    for (int HT = 32; HT < 17000; HT *= 2) {
+    auto Sim = new rain3::Simulator(std::string(argc[1])+"MRET2-HT?"+std::to_string(HT)+"-Relaxed?"+std::to_string(Relaxed)+"-SoleCache", 
+        new rain3::SoleCacheIBHandler(), new rain3::QueuePolicies(1, 0), new rain3::MRET2(HT, Relaxed));
+
+    Sim->configureRFT(&StaticCode);
+
+    Simulators.push_back(Sim);
+  }
+  for (int Extended = 0; Extended < 2; Extended++) {
+    for (int Relaxed = 0; Relaxed < 2; Relaxed++) {
+
+      int Depth = 10;
+      auto Sim = new rain3::Simulator(std::string(argc[1])+"NETPlus-HT?"+std::to_string(HT)+"-Relaxed?"+std::to_string(Relaxed)+"-Extended?"+std::to_string(Extended)+"-depth?"+std::to_string(Depth)+"-SoleCache", 
+          new rain3::SoleCacheIBHandler(), new rain3::QueuePolicies(1, 0), new rain3::NETPlus(HT, Relaxed, Extended, Depth));
+
+      Sim->configureRFT(&StaticCode);
+
+      Simulators.push_back(Sim);
+    }
+  }
+  {
+    auto Sim = new rain3::Simulator(std::string(argc[1])+"LEI-HT?"+std::to_string(HT)+"-SoleCache", 
+        new rain3::SoleCacheIBHandler(), new rain3::QueuePolicies(1, 0), new rain3::LEI(HT*0.7));
+
+    Sim->configureRFT(&StaticCode);
+
+    Simulators.push_back(Sim);
+  }
+  //
+  for (int Relaxed = 0; Relaxed < 2; Relaxed++) {
+    //    for (int HT = 32; HT < 17000; HT *= 2) {
+    int HT = 1024;
+    auto Sim = new rain3::Simulator(std::string(argc[1])+"-NET-HT?"+std::to_string(HT)+"-Relaxed?"+std::to_string(Relaxed)+"SharedCache", 
+        new rain3::SharedCacheIBHandler(), new rain3::QueuePolicies(2, 400), new rain3::NET(HT, Relaxed));
+
+    Sim->configureRFT(&StaticCode);
+
+    Simulators.push_back(Sim);
+  }
+  for (int Relaxed = 0; Relaxed < 2; Relaxed++) {
+    //    for (int HT = 32; HT < 17000; HT *= 2) {
+    auto Sim = new rain3::Simulator(std::string(argc[1])+"MRET2-HT?"+std::to_string(HT)+"-Relaxed?"+std::to_string(Relaxed)+"SharedCache", 
+        new rain3::SharedCacheIBHandler(), new rain3::QueuePolicies(1, 0), new rain3::MRET2(HT, Relaxed));
+
+    Sim->configureRFT(&StaticCode);
+
+    Simulators.push_back(Sim);
+  }
+  for (int Extended = 0; Extended < 2; Extended++) {
+    for (int Relaxed = 0; Relaxed < 2; Relaxed++) {
+
+      int Depth = 10;
+      auto Sim = new rain3::Simulator(std::string(argc[1])+"NETPlus-HT?"+std::to_string(HT)+"-Relaxed?"+std::to_string(Relaxed)+"-Extended?"+std::to_string(Extended)+"-depth?"+std::to_string(Depth)+"SharedCache", 
+          new rain3::SharedCacheIBHandler(), new rain3::QueuePolicies(1, 0), new rain3::NETPlus(HT, Relaxed, Extended, Depth));
+
+      Sim->configureRFT(&StaticCode);
+
+      Simulators.push_back(Sim);
+    }
+  }
+  {
+    auto Sim = new rain3::Simulator(std::string(argc[1])+"LEI-HT?"+std::to_string(HT)+"SharedCache", 
+        new rain3::SharedCacheIBHandler(), new rain3::QueuePolicies(1, 0), new rain3::LEI(HT*0.7));
+
+    Sim->configureRFT(&StaticCode);
+
+    Simulators.push_back(Sim);
+  }
+
 
   std::cout << "We are going to simulate " << Simulators.size() << " DBTs configurations with a " << argc[4] << "(" << addr_limit << ") bench.\n";
 
@@ -105,7 +178,7 @@ int main(int argv, char** argc) {
       }
     }
 
-    #pragma omp parallel for
+#pragma omp parallel for
     for (uint32_t i = 0; i < Simulators.size(); i++) 
       for (auto CurrentInst : Insts)
         Simulators[i]->run(CurrentInst);

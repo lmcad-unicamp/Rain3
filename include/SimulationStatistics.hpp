@@ -18,6 +18,7 @@ namespace rain3 {
     uint32_t NativeTotalExecution = 0;
     uint32_t TotalRegionsMainExities = 0;
     uint32_t MaxQueueSize = 0;
+    uint32_t TotalIndirectBranches = 0;
     uint32_t TotalMissedIndirectBranches = 0; 
     uint32_t WaitQueueSize = 0;
     uint32_t NumUsedCounters = 0;
@@ -73,7 +74,8 @@ namespace rain3 {
           " Spanned Loop Per Region," <<
           " Compilation Wait Queue Size," <<
           " Maximium Reached Queue Size," <<
-          " Total Num of Missed IBs\n";
+          " Total Num of Missed IBs," <<
+          " Total IBs\n";
       } 
       
       if (FinalStats) {
@@ -133,13 +135,18 @@ namespace rain3 {
       OverviewFile << RegionsSpanningLoop << ", ";
       OverviewFile << WaitQueueSize << ", ";
       OverviewFile << MaxQueueSize << ", ";
-      OverviewFile << TotalMissedIndirectBranches << "\n";
+      OverviewFile << TotalMissedIndirectBranches << ", ";
+      OverviewFile << TotalIndirectBranches << "\n";
 
       OverviewFile.close();
     }
 
     void missedIndirectAddrsTranslation() {
       TotalMissedIndirectBranches += 1;
+    }
+
+    void indirectBranching() {
+      TotalIndirectBranches += 1;
     }
 
     void updateData(std::string Prefix, uint64_t CurrentAddr, uint64_t LastAddr, uint32_t NumOfUsedCounters,
@@ -177,8 +184,8 @@ namespace rain3 {
         InterTotalExecution += 1;
       }
 
-      if (((InterTotalExecution + NativeTotalExecution) % 10000) == 0) 
-        dumpToFile(Prefix, false, NumberOfStats++ ? false : true);
+//      if (((InterTotalExecution + NativeTotalExecution) % 10000) == 0) 
+//        dumpToFile(Prefix, false, NumberOfStats++ ? false : true);
     }
 
     void addRegionInfo(Region* R, uint32_t RegionWaitQueueSize) {

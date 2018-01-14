@@ -69,6 +69,9 @@ namespace rain3 {
       uint64_t EntryAddrs, MainExitAddrs;
 
       uint32_t Ticket = 0;
+
+      bool Compiling = false;
+      uint32_t Weight = 0;
     public:
       std::vector<uint64_t> Instructions;
 
@@ -87,6 +90,12 @@ namespace rain3 {
       bool isCompiled() { return Ticket == 0; }
 
       uint32_t getSize() { return Instructions.size(); };
+
+      void startCompiling() { Compiling = true; }
+      bool isCompiling() { return Compiling; }
+
+      void increaseWeight() { Weight++; }
+      uint32_t getWeight() { return Weight; } 
 
       uint64_t getEntry()                  { return EntryAddrs; }
       void     setEntry(uint64_t Addrs)    { EntryAddrs = Addrs; }

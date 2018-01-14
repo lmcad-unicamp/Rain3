@@ -5,6 +5,8 @@
 
 using namespace rain3;
 
+#define CongestionControl
+
 InternStateTransition Simulator::updateInternState(uint64_t NextAddrs, bool ForceNativeExiting) {
   // Entrying Region: Interpreter -> NativeExecuting
   if (CurrentState == State::Interpreting && isRegionEntrance(NextAddrs) && !ForceNativeExiting) {
@@ -40,6 +42,7 @@ bool Simulator::run(trace_io::trace_item_t CurrentInst) {
     bool WasAbleToTranslate = IBH->handleIB(LastInst, CurrentInst.addr, CurrentRegion);
     if (CurrentState == NativeExecuting) {
       ForceNativeExiting = !WasAbleToTranslate;
+      Statistics.indirectBranching();
 
       if (ForceNativeExiting)
         Statistics.missedIndirectAddrsTranslation();
@@ -47,6 +50,15 @@ bool Simulator::run(trace_io::trace_item_t CurrentInst) {
   }
 
   auto LastStateTransition = updateInternState(CurrentInst.addr, ForceNativeExiting);
+
+  if (CurrentState == Interpreting && isWaitingCompile(CurrentInst.addr)) {
+    for (auto R : RegionWaitQueue) { 
+      if (R->getEntry() == CurrentInst.addr) {
+        R->increaseWeight();
+        break;
+      }
+    }
+  }
 
   // Only handle when not in native execution
   if (CurrentState == Interpreting && !isWaitingCompile(CurrentInst.addr)) {
@@ -56,6 +68,18 @@ bool Simulator::run(trace_io::trace_item_t CurrentInst) {
     if (!MayRegion.isNothing()) { 
       RegionWaitQueue.push_back(MayRegion.get());	
       Statistics.addRegionInfo(MayRegion.get(), RegionWaitQueue.size());
+
+#ifdef CongestionControl      
+      double Ratio = ((double)RegionWaitQueue.size()) / QP->NumThreads;
+      if (Ratio < 0.5) 
+        RFT->setHotnessThreshold((RFT->getHotnessThreshold()/2)+1); 
+      else if (Ratio < 1)
+        RFT->setHotnessThreshold(RFT->getHotnessThreshold()*0.9 + 1); 
+      else if (Ratio > 4)
+        RFT->setHotnessThreshold(RFT->getHotnessThreshold()*2); 
+      else if (Ratio > 2)
+        RFT->setHotnessThreshold(RFT->getHotnessThreshold()*1.1); 
+#endif
     }
   }
 
