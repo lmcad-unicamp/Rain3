@@ -26,13 +26,61 @@
 #include <IBHandlers.hpp>
 #include <Region.hpp>
 
-int main(int argv, char** argc) {
-  uint64_t addr_limit = 0;
-  // Create the input pipe.
-  trace_io::raw_input_pipe_t InstStream(argc[1], atoi(argc[2]), atoi(argc[3]));
+clarg::argString TracePathFlag("-f", "trace file name", "");
+clarg::argInt StartIdxFlag("-sidx", "Start number of trace file name index", 0);
+clarg::argInt EndIdxFlag("-eidx", "End number of trace file name index", 0);
 
-  if (std::string(argc[4]) == "spec") addr_limit = 0xB2D05E00;
-  else addr_limit = 0xF9CCD8A1C5080000;
+clarg::argBool HelpFlag("-h", "display the help message");
+
+clarg::argInt HotnessFlag("-hot", "Hotness threshold for the RFTs", 50);
+clarg::argString RFTFlag("-rft", "Region Formation Technique name", "net");
+
+void usage(char* PrgName) {
+  cout << "Version: 1.0 (01-01-2019)";
+  #ifdef DEBUG
+  cout << " (Debug Build) ";
+  #endif
+  cout << "\n\n";
+  cout << "Usage: " << PrgName <<
+    " [-f FileName [-fidx startIndex] [-eidx endIndex]\n\n";
+
+  cout << "DESCRIPTION:\n";
+  cout << "This program implements the RAIn DBT Simulator\n" <<
+    "Vanderson Martins do Rosario <vandersonmr2@gmail.com>, 2018.\n\n";
+
+  cout << "ARGUMENTS:\n";
+  clarg::arguments_descriptions(cout, "  ", "\n");
+}
+
+int validateArguments() {
+  if (!TracePathFlag.was_set()) {
+    cerr << "You should provide path for a trace file (-f)!\n";
+    return 1;
+  }
+
+  return 0;
+}
+
+
+int main(int argc, char** argv) {
+  // Linux kernle address limit
+  uint64_t addr_limit = 0xB2D05E00;
+
+  if (clarg::parse_arguments(argc, argv)) {
+    cerr << "Error when parsing the arguments!" << endl;
+    return 1;
+  }
+
+  if (HelpFlag.get_value() == true) {
+    usage(argv[0]);
+    return 1;
+  }
+
+  if (validateArguments())
+    return 1;
+
+  // Create the input pipe.
+  trace_io::raw_input_pipe_t InstStream(TracePathFlag.get_value(), StartIdxFlag.get_value(), EndIdxFlag.get_value());
 
   rain3::InstructionSet StaticCode;
 
@@ -40,130 +88,33 @@ int main(int argv, char** argc) {
 
   std::vector<rain3::Simulator*> Simulators;
 
-  int HT = 1024;
-  
-  for (int Relaxed = 0; Relaxed < 2; Relaxed++) {
-    //    for (int HT = 32; HT < 17000; HT *= 2) {
-    int HT = 1024;
-    auto Sim = new rain3::Simulator(std::string(argc[1])+"-NET-HT?"+std::to_string(HT)+"-Relaxed?"+std::to_string(Relaxed)+"-oneif", 
-        new rain3::OneIfIBHandler(), new rain3::QueuePolicies(2, 400), new rain3::NET(HT, Relaxed));
+  int HT = HotnessFlag.get_value();
 
-    Sim->configureRFT(&StaticCode);
+  std::cout << "Simulating a DBT configuration: \n";
 
-    Simulators.push_back(Sim);
-  }
-  for (int Relaxed = 0; Relaxed < 2; Relaxed++) {
-    //    for (int HT = 32; HT < 17000; HT *= 2) {
-    auto Sim = new rain3::Simulator(std::string(argc[1])+"MRET2-HT?"+std::to_string(HT)+"-Relaxed?"+std::to_string(Relaxed)+"-oneif", 
-        new rain3::OneIfIBHandler(), new rain3::QueuePolicies(1, 0), new rain3::MRET2(HT, Relaxed));
-
-    Sim->configureRFT(&StaticCode);
-
-    Simulators.push_back(Sim);
-  }
-  for (int Extended = 0; Extended < 2; Extended++) {
-    for (int Relaxed = 0; Relaxed < 2; Relaxed++) {
-
-      int Depth = 10;
-      auto Sim = new rain3::Simulator(std::string(argc[1])+"NETPlus-HT?"+std::to_string(HT)+"-Relaxed?"+std::to_string(Relaxed)+"-Extended?"+std::to_string(Extended)+"-depth?"+std::to_string(Depth)+"-oneif", 
-          new rain3::OneIfIBHandler(), new rain3::QueuePolicies(1, 0), new rain3::NETPlus(HT, Relaxed, Extended, Depth));
-
-      Sim->configureRFT(&StaticCode);
-
-      Simulators.push_back(Sim);
-    }
-  }
-  {
-    auto Sim = new rain3::Simulator(std::string(argc[1])+"LEI-HT?"+std::to_string(HT)+"-oneif", 
-        new rain3::OneIfIBHandler(), new rain3::QueuePolicies(1, 0), new rain3::LEI(HT*0.7));
-
-    Sim->configureRFT(&StaticCode);
-
-    Simulators.push_back(Sim);
-  }
-  //
-  for (int Relaxed = 0; Relaxed < 2; Relaxed++) {
-    //    for (int HT = 32; HT < 17000; HT *= 2) {
-    int HT = 1024;
-    auto Sim = new rain3::Simulator(std::string(argc[1])+"-NET-HT?"+std::to_string(HT)+"-Relaxed?"+std::to_string(Relaxed)+"-SoleCache", 
-        new rain3::SoleCacheIBHandler(), new rain3::QueuePolicies(2, 400), new rain3::NET(HT, Relaxed));
-
-    Sim->configureRFT(&StaticCode);
-
-    Simulators.push_back(Sim);
-  }
-  for (int Relaxed = 0; Relaxed < 2; Relaxed++) {
-    //    for (int HT = 32; HT < 17000; HT *= 2) {
-    auto Sim = new rain3::Simulator(std::string(argc[1])+"MRET2-HT?"+std::to_string(HT)+"-Relaxed?"+std::to_string(Relaxed)+"-SoleCache", 
-        new rain3::SoleCacheIBHandler(), new rain3::QueuePolicies(1, 0), new rain3::MRET2(HT, Relaxed));
-
-    Sim->configureRFT(&StaticCode);
-
-    Simulators.push_back(Sim);
-  }
-  for (int Extended = 0; Extended < 2; Extended++) {
-    for (int Relaxed = 0; Relaxed < 2; Relaxed++) {
-
-      int Depth = 10;
-      auto Sim = new rain3::Simulator(std::string(argc[1])+"NETPlus-HT?"+std::to_string(HT)+"-Relaxed?"+std::to_string(Relaxed)+"-Extended?"+std::to_string(Extended)+"-depth?"+std::to_string(Depth)+"-SoleCache", 
-          new rain3::SoleCacheIBHandler(), new rain3::QueuePolicies(1, 0), new rain3::NETPlus(HT, Relaxed, Extended, Depth));
-
-      Sim->configureRFT(&StaticCode);
-
-      Simulators.push_back(Sim);
-    }
-  }
-  {
-    auto Sim = new rain3::Simulator(std::string(argc[1])+"LEI-HT?"+std::to_string(HT)+"-SoleCache", 
-        new rain3::SoleCacheIBHandler(), new rain3::QueuePolicies(1, 0), new rain3::LEI(HT*0.7));
-
-    Sim->configureRFT(&StaticCode);
-
-    Simulators.push_back(Sim);
-  }
-  //
-  for (int Relaxed = 0; Relaxed < 2; Relaxed++) {
-    //    for (int HT = 32; HT < 17000; HT *= 2) {
-    int HT = 1024;
-    auto Sim = new rain3::Simulator(std::string(argc[1])+"-NET-HT?"+std::to_string(HT)+"-Relaxed?"+std::to_string(Relaxed)+"SharedCache", 
-        new rain3::SharedCacheIBHandler(), new rain3::QueuePolicies(2, 400), new rain3::NET(HT, Relaxed));
-
-    Sim->configureRFT(&StaticCode);
-
-    Simulators.push_back(Sim);
-  }
-  for (int Relaxed = 0; Relaxed < 2; Relaxed++) {
-    //    for (int HT = 32; HT < 17000; HT *= 2) {
-    auto Sim = new rain3::Simulator(std::string(argc[1])+"MRET2-HT?"+std::to_string(HT)+"-Relaxed?"+std::to_string(Relaxed)+"SharedCache", 
-        new rain3::SharedCacheIBHandler(), new rain3::QueuePolicies(1, 0), new rain3::MRET2(HT, Relaxed));
-
-    Sim->configureRFT(&StaticCode);
-
-    Simulators.push_back(Sim);
-  }
-  for (int Extended = 0; Extended < 2; Extended++) {
-    for (int Relaxed = 0; Relaxed < 2; Relaxed++) {
-
-      int Depth = 10;
-      auto Sim = new rain3::Simulator(std::string(argc[1])+"NETPlus-HT?"+std::to_string(HT)+"-Relaxed?"+std::to_string(Relaxed)+"-Extended?"+std::to_string(Extended)+"-depth?"+std::to_string(Depth)+"SharedCache", 
-          new rain3::SharedCacheIBHandler(), new rain3::QueuePolicies(1, 0), new rain3::NETPlus(HT, Relaxed, Extended, Depth));
-
-      Sim->configureRFT(&StaticCode);
-
-      Simulators.push_back(Sim);
-    }
-  }
-  {
-    auto Sim = new rain3::Simulator(std::string(argc[1])+"LEI-HT?"+std::to_string(HT)+"SharedCache", 
-        new rain3::SharedCacheIBHandler(), new rain3::QueuePolicies(1, 0), new rain3::LEI(HT*0.7));
-
-    Sim->configureRFT(&StaticCode);
-
-    Simulators.push_back(Sim);
+  rain3::RFTs* RFT;
+  if      (RFTFlag.get_value() == "net") {
+    RFT = new rain3::NET(HT, false);
+    std::cout << "NET Select with threshold " << HT << "\n";
+  } else if (RFTFlag.get_value() == "mret2") {
+    RFT = new rain3::MRET2(HT, false);
+    std::cout << "MRET2 Select with threshold " << HT << "\n";
+  } else if (RFTFlag.get_value() == "net-r") {
+    RFT = new rain3::NET(HT, true);
+    std::cout << "NET-R Select with threshold " << HT << "\n";
+  } else if (RFTFlag.get_value() == "netplus") {
+    RFT = new rain3::NETPlus(HT, false, false);
+    std::cout << "NETPlus Select with threshold " << HT << "\n";
+  } else if (RFTFlag.get_value() == "netplus-e-r") {
+    RFT = new rain3::NETPlus(HT, true, true);
+    std::cout << "NETPlus-e-r Select with threshold " << HT << "\n";
   }
 
-
-  std::cout << "We are going to simulate " << Simulators.size() << " DBTs configurations with a " << argc[4] << "(" << addr_limit << ") bench.\n";
+  auto Sim = new rain3::Simulator("result", 
+      new rain3::OneIfIBHandler(), 
+      new rain3::QueuePolicies(1, 0), 
+      RFT);
+  Sim->configureRFT(&StaticCode);
 
   uint32_t TotalInstSimulated = 0;
   // Iterate over all the instructions
@@ -171,24 +122,22 @@ int main(int argv, char** argc) {
     Insts.clear();
 
     trace_io::trace_item_t I;
-    while (InstStream.get_next_instruction(I) && Insts.size() < 10000000) {
+    while (InstStream.get_next_instruction(I) && Insts.size() < 1000000000) {
       if (I.addr < addr_limit) {
         Insts.push_back(I);
-        StaticCode.addInstruction(I.addr, I.opcode);
+        StaticCode.addInstruction(I.addr, I);
       }
     }
 
-#pragma omp parallel for
-    for (uint32_t i = 0; i < Simulators.size(); i++) 
-      for (auto CurrentInst : Insts)
-        Simulators[i]->run(CurrentInst);
+    for (auto CurrentInst : Insts)
+      Sim->run(CurrentInst);
+
+    std::cout << "Simulated " << TotalInstSimulated << " instructions...\n";
 
     TotalInstSimulated += Insts.size();
   } while (Insts.size() != 0 && TotalInstSimulated < 2500000000);
 
-
-  for (uint32_t i = 0; i < Simulators.size(); i++) 
-    delete Simulators[i];
+  delete Sim;
 
   return 0;
 }

@@ -23,6 +23,7 @@
 
 #include <string>
 #include <vector>
+#include <iostream>
 
 using namespace std;
 
@@ -32,7 +33,13 @@ namespace trace_io {
 	 *  types: 
 	 *  0 -- memory read address
 	 *  1 -- memory store address
-	 *  2 -- instruction
+	 *  2 -- common instruction
+	 *  3 -- ret instruction
+	 *  4 -- call instruction
+	 *  5 -- indirect branch instruction
+	 *  6 -- branch instruction
+	 *  7 -- load instruction
+	 *  8 -- store instruction
 	 * 
 	 *  Instruction items may (or may not) be followed by memory addresses items
 	 *  (type 0 or 1). These items indicate the memory address accessed by the
@@ -43,101 +50,33 @@ namespace trace_io {
 	{
 		char               type;
 		unsigned long long addr;
-		char               opcode[16];
+		unsigned long long opcode;
 		unsigned char      length;
-		unsigned char      mem_size;
+		unsigned long long mem_addr;
 
-		bool is_mem_read() { return (type == 0); }
-		bool is_mem_write() { return (type == 1); }
-		bool is_instruction() { return (type == 2); }
-		bool is_indirect_branch_inst() {
-			int op  = (int) (unsigned char) opcode[0];
-			return (op == 0x77); 
-		}
-		bool is_flow_control_inst() {
-			int op  = (int) (unsigned char) opcode[0];
-			int op1 = (int) (unsigned char) opcode[1];
-			return (op == 0xe8) // Call
-				|| (op == 0xe9) // jmp near *
-				|| (op == 0xc3) // ret void
-				|| (op == 0xcb) // ret
-				|| (op == 0xeb) // jmp short
-				|| (op == 0x74) // je short
-				|| (op == 0x0f && op1 == 0x84) // je near *
-				|| (op == 0x78) // js short
-				|| (op == 0x0f && op1 == 0x88) // js near *
-				|| (op == 0x72) // jc short
-				|| (op == 0x0f && op1 == 0x82) // jc near *
-				|| (op == 0x7d) // jge short
-				|| (op == 0x0f && op1 == 0x8d) // jge near *
-				|| (op == 0x7f) // jg short
-				|| (op == 0x0f && op1 == 0x8f) // jg near *
-				|| (op == 0x75) // jne short
-				|| (op == 0x0f && op1 == 0x85) // jne near *
-				|| (op == 0x7c) // jl short
-				|| (op == 0x0f && op1 == 0x8c) // jl near *
-				|| (op == 0x7e) // jle short
-				|| (op == 0x0f && op1 == 0x8e) // jle near *
-				|| (op == 0x79) // jns short
-				|| (op == 0x0f && op1 == 0x89); // jns near *
-		}
+		bool is_mem_read()             { return (type == 0); }
+		bool is_mem_write()            { return (type == 1); }
+		bool is_instruction()          { return (type >= 2); }
+		bool is_ret_instruction()      { return (type == 3); }
+		bool is_call_instruction()     { return (type == 4); }
+		bool is_indirect_branch_inst() { return (type == 5 || type == 3); }
+		bool is_branch_inst()          { return (type == 6);	}
+		bool is_flow_control_inst()    { return (type >= 3);	}
 
 		union int32 {
 			int i;
 			char bytes[4];
 		};
 
-		vector<unsigned long long> 
-			getPossibleNextAddrs() {
-				int op  = (int) (unsigned char) opcode[0];
-				int op1 = (int) (unsigned char) opcode[1];
 
+		vector<unsigned long long> getPossibleNextAddrs() {
 				vector<unsigned long long> nextAddrs;
-				if (op == 0xe8 || op == 0xe9) {  // Call and near JMP
 
-					union int32 offset;
-					offset.bytes[0] = opcode[1];
-					offset.bytes[1] = opcode[2];
-					offset.bytes[2] = opcode[3];
-					offset.bytes[3] = opcode[4];
-
-					nextAddrs.push_back(addr+5+offset.i);
-				} else if // Near branches 
-					( (op == 0x0f && op1 == 0x84)
-						|| (op == 0x0f && op1 == 0x88)
-						|| (op == 0x0f && op1 == 0x8c)
-						|| (op == 0x0f && op1 == 0x89)
-						|| (op == 0x0f && op1 == 0x85)
-						|| (op == 0x0f && op1 == 0x8e)
-						|| (op == 0x0f && op1 == 0x82)
-						|| (op == 0x0f && op1 == 0x8d)
-						|| (op == 0x0f && op1 == 0x8f)
-					) { // near
-
-						union int32 offset;
-						offset.bytes[0] = opcode[2];
-						offset.bytes[1] = opcode[3];
-						offset.bytes[2] = opcode[4];
-						offset.bytes[3] = opcode[5];
-
-						nextAddrs.push_back(addr+6+offset.i);
-					} else if // short branches
-						(    op == 0xeb || op == 0x74 || op == 0x78 
-								 || op == 0x72 || op == 0x7d || op == 0x7f 
-								 || op == 0x7c || op == 0x79 || op == 0x75 || op == 0x7e) {
-
-							nextAddrs.push_back(addr+2+ (signed char) opcode[1]);
-						}
-
-					// If it is not a jmp, call or ret
-					if (op != 0xe9 && op != 0xeb && op != 0xc3) {
-						if (op == 0x0f)
-							nextAddrs.push_back(addr+6);
-						else
-							nextAddrs.push_back(addr+2);
-					}
-
-					return nextAddrs;
+        if (type == 6) {
+          nextAddrs.push_back(mem_addr); 
+          nextAddrs.push_back(addr+length);
+        }
+				return nextAddrs;
 			}
 	};
 
@@ -220,8 +159,6 @@ namespace trace_io {
 
 			string sys_cmd;
 	};
-
-
 };
 
 #endif  // TRACE_IO_H

@@ -1,35 +1,24 @@
 #include <RFTs.hpp>
 
 #include <queue>
+#include <iostream>
 
 using namespace rain3;
-
-bool isRet(const char* cur_opcode) {
-	int opcode = (int) (unsigned char) cur_opcode[0];
-	return (opcode == 0xc3 || opcode == 0xcb);
-}
-
-bool isCall(const char* cur_opcode) {
-	int opcode = (int) (unsigned char) cur_opcode[0];
-	return (opcode == 0xe8);
-}
 
 void NETPlus::expand(Region* R) {
 	std::queue<uint64_t> s;
 	std::unordered_map<uint64_t, uint32_t> distance;
 	std::unordered_map<uint64_t, uint64_t> next, parent;
-	std::unordered_map<uint64_t, uint64_t> last_call;
 
 	// Init BFS frontier
 	for (auto Addrs : R->Instructions) {
-		if (StaticCode->getTraceItem(Addrs).is_flow_control_inst()) {
+		if (StaticCode->getTraceItem(Addrs).is_branch_inst()) {
 			s.push(Addrs);
 			distance[Addrs] = 0;
 			parent[Addrs] = 0;
 		}
 	}
 
-	uint32_t numberOfInlines = 0;
 	while (!s.empty()) {
 		unsigned long long current = s.front();
 		s.pop();
@@ -37,10 +26,6 @@ void NETPlus::expand(Region* R) {
 		if (distance[current] < DepthLimit) {
 
 			auto targets = StaticCode->getTraceItem(current).getPossibleNextAddrs();
-
-			if (isRet(StaticCode->getOpcode(current))) 
-				if (last_call.count(current) != 0)
-					targets.push_back(last_call[current]);
 
 			for (auto target : targets) {
 				if (parent.count(target) != 0) continue;
@@ -81,20 +66,9 @@ void NETPlus::expand(Region* R) {
 					if (RegionsCache->count(it->first) != 0)
 						break;
 
-					if (StaticCode->getTraceItem(it->first).is_flow_control_inst() && distance.count(it->first) == 0) {
+					if (StaticCode->getTraceItem(it->first).is_branch_inst() && distance.count(it->first) == 0) {
 						s.push(it->first);
-
-						if (last_call.count(current) != 0)
-							last_call[it->first] = last_call[current]; 
-
-						if (numberOfInlines < 20 && StaticCode->hasInstruction(it->first) && isCall(StaticCode->getOpcode(it->first))) {
-							numberOfInlines++;
-							last_call[it->first] = it->first + 5;
-							distance[it->first] = 1;
-						} else {
-							distance[it->first] = distance[current] + 1;
-						}
-
+						distance[it->first] = distance[current] + 1;
 						next[it->first] = target;
 						break;
 					}

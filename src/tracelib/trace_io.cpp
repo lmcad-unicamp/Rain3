@@ -79,38 +79,27 @@ bool raw_input_pipe_t::get_next_item(trace_item_t& item)
     exit (1);
   }
   
-  if (item.type != 2) {
-    // memory address 
-    if (fread(&item.addr,sizeof(unsigned long long),1,current_fh) != 1) {
-      cerr << "Error: Could not read address field from trace item (type = " 
-	   << item.type << ")." << endl; 
-      exit(1);
-    }
-    return true;
+  if (fread(&item.addr,sizeof(unsigned long long),1,current_fh) != 1) {
+    cerr << "Error: Could not read address field from instruction "
+   << "trace item (type = 2)." << endl;
+    exit(1);
   }
-  else {
-    if (fread(&item.addr,sizeof(unsigned long long),1,current_fh) != 1) {
-      cerr << "Error: Could not read address field from instruction "
-	   << "trace item (type = 2)." << endl;
-      exit(1);
-    }
-    if (fread(&item.opcode,16*sizeof(char),1,current_fh) != 1) {
-      cerr << "Error: Could not read opcode field from instruction "
-	   << "trace item (type = 2)." << endl;
-      exit(1);
-    }
-    if (fread(&item.length,sizeof(char),1,current_fh) != 1) {
-      cerr << "Error: Could not read length field from instruction "
-	   << "trace item (type = 2)." << endl;
-      exit(1);
-    }
-    if (fread(&item.mem_size,sizeof(char),1,current_fh) != 1) {
-      cerr << "Error: Could not read mem_size field from instruction "
-	   << "trace item (type = 2)." << endl;
-      exit(1);
-    }
-    return true;
+  if (fread(&item.opcode,sizeof(unsigned long long),1,current_fh) != 1) {
+    cerr << "Error: Could not read opcode field from instruction "
+   << "trace item (type = 2)." << endl;
+    exit(1);
   }
+  if (fread(&item.length,sizeof(char),1,current_fh) != 1) {
+    cerr << "Error: Could not read length field from instruction "
+   << "trace item (type = 2)." << endl;
+    exit(1);
+  }
+  if (fread(&item.mem_addr,sizeof(unsigned long long),1,current_fh) != 1) {
+    cerr << "Error: Could not read mem_size field from instruction "
+   << "trace item (type = 2)." << endl;
+    exit(1);
+  }
+  return true;
 }
 
 raw_output_pipe_t::~raw_output_pipe_t()
@@ -153,7 +142,7 @@ void raw_output_pipe_t::write_trace_item(trace_item_t& item)
 	   << "trace (type = 2)." << endl;
       exit(1);
     }
-    if (fwrite(&item.opcode,16*sizeof(char),1,fh) != 1) {
+    if (fwrite(&item.opcode,sizeof(unsigned long long),1,fh) != 1) {
       cerr << "Error: Could not write opcode field to output "
 	   << "trace (type = 2)." << endl;
       exit(1);
@@ -163,7 +152,7 @@ void raw_output_pipe_t::write_trace_item(trace_item_t& item)
 	   << "trace (type = 2)." << endl;
       exit(1);
     }
-    if (fwrite(&item.mem_size,sizeof(char),1,fh) != 1) {
+    if (fwrite(&item.mem_addr,sizeof(unsigned long long),1,fh) != 1) {
       cerr << "Error: Could not write mem_size field to output "
 	   << "trace (type = 2)." << endl;
       exit(1);

@@ -51,7 +51,7 @@ namespace rain3 {
       FilePrefix = Prefix;
     }
 
-    void configureRFT(auto SC) { RFT->configure(SC, &RegionsCache); }
+    void configureRFT(InstructionSet* SC) { RFT->configure(SC, &RegionsCache); }
 
     ~Simulator() {
       Statistics.dumpToFile(FilePrefix + "final", true, true);

@@ -19,7 +19,7 @@ namespace rain3 {
       spp::sparse_hash_map<uint64_t, std::unique_ptr<Region>>* RegionsCache;
 
     public:
-      void configure(auto SC, auto RC) { StaticCode = SC; RegionsCache = RC; }
+      void configure(InstructionSet* SC, spp::sparse_hash_map<uint64_t, std::unique_ptr<Region>>* RC) { StaticCode = SC; RegionsCache = RC; }
 
       uint32_t getNumUsedCounters() { return HotnessCounter.size(); };
 

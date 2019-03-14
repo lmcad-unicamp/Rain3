@@ -8,41 +8,33 @@
 #include <trace_io.h>
 
 namespace rain3 {
-  class InstructionSet {
+  class InstructionSet { 
     private:
-      std::map<uint64_t, char[16]> Instructions;
+      std::map<uint64_t, trace_io::trace_item_t> Instructions;
 
     public:
-      std::map<uint64_t, char[16]>::const_iterator find(uint64_t addrs) const {
+      std::map<uint64_t, trace_io::trace_item_t>::const_iterator find(uint64_t addrs) const {
         return Instructions.find(addrs);
       }
 
-      std::map<uint64_t, char[16]>::const_iterator getEnd() const {
+      std::map<uint64_t, trace_io::trace_item_t>::const_iterator getEnd() const {
         return Instructions.end();
       }
 
-      const char* getOpcode(uint64_t addrs) const {
-        return Instructions.at(addrs);
+      unsigned long long getOpcode(uint64_t addrs) const {
+        return Instructions.at(addrs).opcode;
       }
 
       bool hasInstruction(uint64_t addrs) const {
         return Instructions.count(addrs) != 0;
       }
 
-      void addInstruction(uint64_t addrs, char opcode[16]) {
-        for (int i = 0; i < 16; i++)
-          Instructions[addrs][i] = opcode[i];
+      void addInstruction(uint64_t addrs, trace_io::trace_item_t inst) {
+        Instructions[addrs] = inst;
       }
 
 			trace_io::trace_item_t getTraceItem(uint64_t Addrs) {
-				trace_io::trace_item_t TI;
-				TI.type = 2;
-				TI.addr = Addrs;
-				const char* S = getOpcode(Addrs);
-				for (int i = 0; i < 16; i++) {
-					TI.opcode[i] = S[i];	
-				}
-				return TI;
+				return Instructions[Addrs];
 			}
 
       size_t size() {
